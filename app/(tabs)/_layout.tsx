@@ -1,68 +1,77 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { Redirect, Tabs } from 'expo-router';
+import { colors, fonts } from '@/constants/theme';
+import { useParents } from '@/hooks/useParents';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+  return (
+    <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.5 }}>{label}</Text>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { data: parents = [], isLoading, isFetched } = useParents();
+
+  if (isLoading || !isFetched) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (parents.length === 0) {
+    return <Redirect href="/onboarding" />;
+  }
 
   return (
     <Tabs
+      initialRouteName="parents"
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: {
+          fontFamily: fonts.sans,
+          fontSize: 11,
+          fontWeight: '500',
+        },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 0.5,
+          height: 56,
+          paddingBottom: 6,
+          paddingTop: 6,
+        },
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="parents"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: '부모님',
+          tabBarIcon: ({ focused }) => <TabIcon label="👨‍👩‍👧" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="anniversaries"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: '기념일',
+          tabBarIcon: ({ focused }) => <TabIcon label="📅" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stories"
+        options={{
+          title: '이야기',
+          tabBarIcon: ({ focused }) => <TabIcon label="💬" focused={focused} />,
         }}
       />
     </Tabs>

@@ -31,7 +31,13 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FAF7F2"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "기념일 사진을 저장하기 위해 갤러리 접근 권한이 필요합니다."
         }
       ]
     ],
