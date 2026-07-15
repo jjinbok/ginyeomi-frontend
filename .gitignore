@@ -18,24 +18,61 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# generated native folders
+/ios
+/android
+
 # Metro
 .metro-health-check*
 
-# debug
+# debug / logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+logs/
 
 # macOS
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# local env (API URL, secrets)
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# test / coverage
+coverage/
+.nyc_output/
+
+# IDE & editor
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+
+# AI / local agent settings
+.claude/
+.cursor/
+
+# EAS / credentials
+google-services.json
+GoogleService-Info.plist
+*.keystore
+
+# misc caches
+.cache/
+.turbo/
+tmp/
+temp/
