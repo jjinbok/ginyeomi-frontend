@@ -14,9 +14,7 @@ export function formatAnniversaryDate(month: number, day: number, recurring?: bo
 }
 
 /** 매년 반복 기념일만 대상으로, 가장 가까운 다가오는 기념일을 고름 */
-export function findNextAnniversary(
-  anniversaries: Pick<Anniversary, 'daysUntilNext' | 'name' | 'emoji' | 'recurring'>[],
-) {
+export function findNextAnniversary(anniversaries: Anniversary[]): Anniversary | null {
   const recurringOnly = anniversaries.filter((item) => item.recurring);
   if (recurringOnly.length === 0) return null;
   return recurringOnly.reduce((closest, item) =>

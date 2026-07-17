@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,16 +12,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showApiErrorAlert } from '@/api/errors';
 import { AnniversaryAddModal } from '@/components/AnniversaryAddModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { EmptyYearCard } from '@/components/EmptyYearCard';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { FAB } from '@/components/FAB';
 import { MemoryCard } from '@/components/MemoryCard';
-import { colors, fonts, layout } from '@/constants/theme';
+import { getScreenContentStyle } from '@/components/ScreenBody';
+import { metrics, space, typeScale, webContentFrame } from '@/constants/layout';
+import { colors, fonts, layout, typography } from '@/constants/theme';
 import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
 import { useAnniversaries, useDeleteAnniversary } from '@/hooks/useAnniversaries';
 import { useMemories } from '@/hooks/useMemories';
-import { buildYearTabs, formatAnniversaryDate } from '@/utils/anniversary';
+import { formatAnniversaryDate } from '@/utils/anniversary';
 import type { Anniversary } from '@/types';
+
+function SectionHeader({ title, subcopy }: { title: string; subcopy?: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={typography.sectionTitle}>{title}</Text>
+      {subcopy ? <Text style={[typography.sectionSubcopy, styles.sectionSubcopy]}>{subcopy}</Text> : null}
+    </View>
+  );
+}
 
 export default function DetailScreen() {
   const router = useRouter();
@@ -50,19 +59,10 @@ export default function DetailScreen() {
   const displayMonth = anniversary?.month ?? Number(params.month);
   const displayDay = anniversary?.day ?? Number(params.day);
 
-  const yearTabs = useMemo(() => buildYearTabs(memories), [memories]);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (yearTabs.length === 0) {
-      setSelectedYear(null);
-      return;
-    }
-    setSelectedYear((prev) => (prev != null && yearTabs.includes(prev) ? prev : yearTabs[0]));
-  }, [yearTabs]);
-
-  const selectedMemory =
-    selectedYear != null ? memories.find((m) => m.year === selectedYear) : undefined;
+  const sortedMemories = useMemo(
+    () => [...memories].sort((a, b) => b.year - a.year),
+    [memories],
+  );
 
   const editingAnniversary = useMemo<Anniversary | null>(() => {
     if (anniversary) return anniversary;
@@ -145,78 +145,95 @@ export default function DetailScreen() {
     );
   }
 
+  const emojiSize = metrics.anniversaryEmoji;
+  const memoryCountLabel =
+    sortedMemories.length > 0 ? `해마다 남긴 하루 · ${sortedMemories.length}` : null;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
+      <View style={[styles.navHeader, webContentFrame]}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.navSide}>
+          <Text style={styles.backText}>←</Text>
+        </Pressable>
+        <Text style={styles.navTitle}>기념일</Text>
+        <View style={[styles.navSide, styles.headerActions]}>
+          <Pressable onPress={() => setSheetVisible(true)} hitSlop={8}>
+            <Text style={styles.actionText}>수정</Text>
           </Pressable>
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => setSheetVisible(true)} hitSlop={8}>
-              <Text style={styles.actionText}>수정</Text>
-            </Pressable>
-            <Pressable onPress={() => setDeleteVisible(true)} hitSlop={8} disabled={deleteMutation.isPending}>
-              <Text style={styles.deleteText}>삭제</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => setDeleteVisible(true)}
+            hitSlop={8}
+            disabled={deleteMutation.isPending}
+          >
+            <Text style={styles.deleteText}>삭제</Text>
+          </Pressable>
         </View>
-        <Text style={styles.emoji}>{displayEmoji}</Text>
-        <Text style={styles.name}>{displayName}</Text>
-        <Text style={styles.dateSubtitle}>
-          {formatAnniversaryDate(
-            displayMonth,
-            displayDay,
-            anniversary?.recurring ?? editingAnniversary?.recurring,
-          )}
-        </Text>
       </View>
 
-      {isError && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>
-            추억을 불러오지 못했어요. 네트워크와 서버 상태를 확인해주세요.
+      <ScrollView
+        contentContainerStyle={getScreenContentStyle({ paddingTop: 4, paddingBottom: 120 })}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <View style={[styles.emojiCircle, { width: emojiSize + 28, height: emojiSize + 28 }]}>
+            <Text style={[styles.emoji, { fontSize: emojiSize }]}>{displayEmoji}</Text>
+          </View>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.dateSubtitle}>
+            {formatAnniversaryDate(
+              displayMonth,
+              displayDay,
+              anniversary?.recurring ?? editingAnniversary?.recurring,
+            )}
           </Text>
+          {memoryCountLabel ? (
+            <View style={styles.metaBadge}>
+              <Text style={styles.metaBadgeText}>{memoryCountLabel}</Text>
+            </View>
+          ) : null}
         </View>
-      )}
-      {isOffline && !isError && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>서버 연결에 실패했어요. 저장된 추억 데이터를 표시합니다.</Text>
+
+        {isError ? (
+          <ErrorBanner message="추억을 불러오지 못했어요. 네트워크와 서버 상태를 확인해주세요." />
+        ) : null}
+        {isOffline && !isError ? (
+          <ErrorBanner message="서버 연결에 실패했어요. 저장된 추억 데이터를 표시합니다." />
+        ) : null}
+
+        <View style={styles.section}>
+          <SectionHeader title="해마다의 기억" subcopy="년도 순서대로 이어져 있어요" />
+
+          {sortedMemories.length === 0 ? (
+            <Pressable
+              style={({ pressed }) => [styles.emptyCard, pressed && styles.pressed]}
+              onPress={navigateToCreate}
+            >
+              <Text style={styles.emptyTitle}>첫 추억을 남겨 보세요</Text>
+              <Text style={styles.emptyBody}>그날의 사진과 짧은 메모만 있어도 충분해요</Text>
+              <Text style={styles.emptyAction}>+ 추억 남기기</Text>
+            </Pressable>
+          ) : (
+            sortedMemories.map((memory, index) => {
+              const isLast = index === sortedMemories.length - 1;
+              return (
+                <View key={memory.id} style={styles.timelineRow}>
+                  <View style={styles.timelineRail}>
+                    <Text style={styles.timelineYear}>{memory.year}</Text>
+                    <View style={styles.timelineDot} />
+                    {!isLast ? <View style={styles.timelineLine} /> : null}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <MemoryCard
+                      memory={memory}
+                      showYear={false}
+                      onPress={() => navigateToMemory(memory.id)}
+                    />
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
-      )}
-
-      {yearTabs.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.yearTabs}
-          style={styles.yearTabsContainer}
-        >
-          {yearTabs.map((year) => {
-            const isSelected = year === selectedYear;
-            return (
-              <Pressable
-                key={year}
-                style={[styles.yearTab, isSelected ? styles.yearTabSelected : styles.yearTabDefault]}
-                onPress={() => setSelectedYear(year)}
-              >
-                <Text style={[styles.yearTabText, isSelected && styles.yearTabTextSelected]}>
-                  {year}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {selectedMemory ? (
-          <Pressable onPress={() => navigateToMemory(selectedMemory.id)}>
-            <MemoryCard memory={selectedMemory} />
-          </Pressable>
-        ) : (
-          <EmptyYearCard onPress={navigateToCreate} />
-        )}
       </ScrollView>
 
       <FAB onPress={navigateToCreate} />
@@ -251,28 +268,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  headerTop: {
+  navHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    width: '100%',
+    paddingHorizontal: space.screenX,
+    paddingVertical: 8,
   },
-  backButton: {
-    alignSelf: 'flex-start',
+  navSide: {
+    minWidth: 72,
+  },
+  navTitle: {
+    fontSize: 15,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
   },
   backText: {
-    fontSize: 24,
+    fontSize: 22,
     color: colors.textPrimary,
+    lineHeight: 28,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'flex-end',
+    gap: 12,
   },
   actionText: {
     fontSize: 14,
@@ -282,76 +303,124 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     fontSize: 14,
+    color: colors.textMuted,
+    fontFamily: fonts.sans,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: space.section - 8,
+    marginBottom: 4,
+  },
+  emojiCircle: {
+    borderRadius: 999,
+    backgroundColor: colors.tagBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emoji: {
+    textAlign: 'center',
+  },
+  name: {
+    fontSize: typeScale.heroName,
+    lineHeight: typeScale.heroNameLine,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  dateSubtitle: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  metaBadge: {
+    backgroundColor: colors.tagBackground,
+    borderRadius: layout.chipRadius,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  metaBadgeText: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: colors.accent,
+    fontWeight: '500',
+  },
+  section: {
+    marginBottom: space.section,
+  },
+  sectionHeader: {
+    marginBottom: 14,
+  },
+  sectionSubcopy: {
+    marginTop: 4,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: layout.cardRadius,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    paddingVertical: 28,
+    paddingHorizontal: 18,
+  },
+  pressed: {
+    opacity: 0.88,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptyBody: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: colors.textHint,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  emptyAction: {
+    fontSize: 14,
     color: colors.accent,
     fontFamily: fonts.sans,
     fontWeight: '500',
   },
-  emoji: {
-    fontSize: 36,
-    marginBottom: 8,
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
-  name: {
-    fontSize: 24,
-    fontFamily: fonts.serif,
-    color: colors.textPrimary,
-    marginBottom: 4,
+  timelineRail: {
+    width: 52,
+    alignItems: 'center',
+    paddingTop: 4,
   },
-  dateSubtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontFamily: fonts.sans,
-  },
-  errorBanner: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 20,
-    marginBottom: 8,
-  },
-  errorText: {
+  timelineYear: {
     fontSize: 12,
-    color: colors.textSecondary,
     fontFamily: fonts.sans,
-  },
-  yearTabsContainer: {
-    maxHeight: 52,
-    marginBottom: 8,
-  },
-  yearTabs: {
-    paddingHorizontal: 20,
-    gap: 8,
-    alignItems: 'center',
-  },
-  yearTab: {
-    minWidth: 72,
-    minHeight: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: layout.borderWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yearTabSelected: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
-  },
-  yearTabDefault: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  yearTabText: {
-    fontSize: 14,
-    fontFamily: fonts.sans,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  yearTabTextSelected: {
-    color: colors.surface,
+    color: colors.accent,
     fontWeight: '500',
+    marginBottom: 6,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 100,
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.accent,
+  },
+  timelineLine: {
+    flex: 1,
+    width: 1.5,
+    backgroundColor: colors.border,
+    marginTop: 6,
+    marginBottom: 2,
+    minHeight: 24,
+  },
+  timelineContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 10,
   },
 });

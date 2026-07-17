@@ -3,6 +3,7 @@ import { ParentAddModal } from '@/components/ParentAddModal';
 import { ParentAddSlot } from '@/components/ParentAddSlot';
 import { ParentCard } from '@/components/ParentCard';
 import { colors, fonts, layout } from '@/constants/theme';
+import { space, typeScale, webContentFrame } from '@/constants/layout';
 import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
 import { useParents } from '@/hooks/useParents';
 import type { ParentRelation } from '@/types';
@@ -48,13 +49,13 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.content}>
+      <View style={[styles.content, webContentFrame]}>
         <View style={styles.hero}>
           <Text style={styles.brand}>기녀미</Text>
-          <Text style={styles.headline}>기념과 이야기,{'\n'}한 권의 책으로</Text>
+          <Text style={styles.headline}>함께한 날들,{'\n'}책 한 권으로</Text>
           <Text style={styles.subcopy}>
-            부모님과의 기념일과 추억, 나눈 이야기를 차곡차곡 기록해 두세요.{'\n'}
-            기녀미가 소중한 순간을 한 권의 책으로 엮어 드려요.
+            기념일과 이야기를 남기면{'\n'}
+            기녀미가 책으로 엮어 드려요.
           </Text>
         </View>
 
@@ -88,7 +89,7 @@ export default function OnboardingScreen() {
         )}
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, webContentFrame]}>
         <Pressable
           style={[styles.startButton, !canStart && styles.startDisabled]}
           onPress={handleStart}
@@ -123,44 +124,46 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 28,
+    width: '100%',
+    paddingHorizontal: space.screenX,
+    paddingTop: space.screenTop + 12,
   },
   hero: {
-    marginBottom: 28,
+    marginBottom: space.headerBottom,
   },
   brand: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: fonts.serif,
     color: colors.accent,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   headline: {
-    fontSize: 26,
+    fontSize: typeScale.pageTitle,
     fontFamily: fonts.serif,
     color: colors.textPrimary,
-    marginBottom: 12,
-    lineHeight: 36,
+    marginBottom: 10,
+    lineHeight: typeScale.pageTitleLine,
   },
   subcopy: {
-    fontSize: 14,
+    fontSize: typeScale.pageSub,
     fontFamily: fonts.sans,
     color: colors.textMuted,
-    lineHeight: 22,
+    lineHeight: typeScale.pageSubLine,
   },
   cardRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: space.cardGap,
   },
   hint: {
-    marginTop: 16,
+    marginTop: 14,
     fontSize: 13,
     fontFamily: fonts.sans,
     color: colors.textHint,
     textAlign: 'center',
   },
   footer: {
-    paddingHorizontal: 20,
+    width: '100%',
+    paddingHorizontal: space.screenX,
     paddingBottom: 12,
     paddingTop: 8,
     borderTopWidth: layout.borderWidth,

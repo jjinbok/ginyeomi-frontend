@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,44 +9,83 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getScreenContentStyle } from '@/components/ScreenBody';
 import { StoryAnswerCard } from '@/components/StoryAnswerCard';
 import { StoryQuestionCard } from '@/components/StoryQuestionCard';
-import { colors, fonts, typography } from '@/constants/theme';
+import { space, typeScale } from '@/constants/layout';
+import { colors, fonts, layout, typography } from '@/constants/theme';
+import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
 import { useParents } from '@/hooks/useParents';
-import { usePastAnswers, useWeeklyQuestions } from '@/hooks/useStories';
-import type { ParentRelation } from '@/types';
+import {
+  useCurrentStoryQuestion,
+  useStoryAnswersForParents,
+} from '@/hooks/useStories';
+import type { Parent, StoryAnswer } from '@/types';
 
 export default function StoriesTabScreen() {
   const router = useRouter();
-  const { data: parents = [] } = useParents();
-  const { data: weeklyQuestions = [], isLoading: weeklyLoading } = useWeeklyQuestions();
-  const { data: pastAnswers = [], isLoading: pastLoading } = usePastAnswers();
+  const { data: parents = [], isLoading: parentsLoading } = useParents();
+  const {
+    data: currentQuestion,
+    isLoading: questionLoading,
+    isError: questionError,
+    error: questionFetchError,
+  } = useCurrentStoryQuestion();
+  const parentIds = useMemo(() => parents.map((parent) => parent.id), [parents]);
+  const {
+    answers,
+    isLoading: answersLoading,
+    isError: answersError,
+    error: answersFetchError,
+  } = useStoryAnswersForParents(parentIds);
+
+  useFetchErrorAlert(questionError, questionFetchError);
+  useFetchErrorAlert(answersError, answersFetchError);
 
   const parentRelationMap = useMemo(() => {
     return new Map(parents.map((p) => [p.id, p.relation]));
   }, [parents]);
 
-  const handleAnswerPress = useCallback(
-    (questionId: number, parentId: number) => {
-      const parent = parents.find((p) => p.id === parentId);
-      const question = weeklyQuestions.find((q) => q.id === questionId);
-      if (!question || !parent) return;
+  const pastAnswers = useMemo(
+    () => answers.filter((answer) => answer.questionId !== currentQuestion?.id),
+    [answers, currentQuestion?.id],
+  );
 
+  const answeredCount = useMemo(() => {
+    if (!currentQuestion) return 0;
+    return parents.filter((parent) =>
+      answers.some(
+        (item) => item.parentId === parent.id && item.questionId === currentQuestion.id,
+      ),
+    ).length;
+  }, [answers, currentQuestion, parents]);
+
+  const openAnswer = useCallback(
+    (parent: Parent, answer?: StoryAnswer) => {
+      const questionId = answer?.questionId ?? currentQuestion?.id;
+      const question = answer?.questionContent ?? currentQuestion?.content;
+      if (!questionId || !question) return;
       router.push({
         pathname: '/story/answer',
         params: {
           questionId: String(questionId),
-          parentId: String(parentId),
+          parentId: String(parent.id),
           parentName: parent.name,
           relation: parent.relation,
-          question: question.question,
+          question,
+          ...(answer
+            ? {
+                answerId: String(answer.id),
+                answerText: answer.answerText,
+              }
+            : {}),
         },
       });
     },
-    [router, parents, weeklyQuestions],
+    [router, currentQuestion],
   );
 
-  if (weeklyLoading || pastLoading) {
+  if (parentsLoading || questionLoading || answersLoading) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color={colors.accent} />
@@ -55,43 +95,87 @@ export default function StoriesTabScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={getScreenContentStyle()}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>이야기</Text>
-          <Text style={styles.subtitle}>부모님의 이야기를 들어보세요</Text>
+          <Text style={styles.subtitle}>
+            {Platform.OS === 'web'
+              ? '한 주마다 질문을 건네고, 부모님의 말씀을 책장처럼 남겨요'
+              : '한 주마다 질문을 건네고\n부모님의 말씀을 책장처럼 남겨요'}
+          </Text>
         </View>
 
-        <Text style={[typography.sectionLabel, styles.sectionLabel]}>이번 주 질문</Text>
-        {weeklyQuestions.map((question) => {
-          const relation = parentRelationMap.get(question.parentId);
-          if (!relation) return null;
+        <View style={styles.sectionHeader}>
+          <Text style={typography.sectionTitle}>이번 주 질문</Text>
+          <Text style={[typography.sectionSubcopy, styles.sectionSubcopy]}>
+            {currentQuestion
+              ? parents.length > 0
+                ? `${answeredCount}/${parents.length}분의 이야기를 들었어요`
+                : '부모님을 먼저 등록해 주세요'
+              : '아직 준비된 질문이 없어요'}
+          </Text>
+        </View>
 
-          const answered = !!question.answerText;
-          return (
-            <StoryQuestionCard
-              key={question.id}
-              question={question}
-              relation={relation}
-              onPress={() => {
-                if (!answered) {
-                  handleAnswerPress(question.id, question.parentId);
-                }
-              }}
-            />
-          );
-        })}
+        {currentQuestion ? (
+          <View style={styles.questionHero}>
+            <Text style={styles.weekLabel}>{currentQuestion.weekOrder}주차</Text>
+            <Text style={styles.questionText}>{currentQuestion.content}</Text>
+          </View>
+        ) : (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>이번 주 질문이 아직 없어요</Text>
+            <Text style={styles.emptyBody}>곧 새로운 질문이 도착할 거예요</Text>
+          </View>
+        )}
 
-        <Text style={[typography.sectionLabel, styles.sectionLabel, styles.pastLabel]}>
-          지난 이야기
-        </Text>
+        {currentQuestion && parents.length > 0 ? (
+          <View style={styles.parentCards}>
+            {parents.map((parent) => {
+              const answer = answers.find(
+                (item) =>
+                  item.parentId === parent.id &&
+                  item.questionId === currentQuestion.id,
+              );
+              return (
+                <StoryQuestionCard
+                  key={parent.id}
+                  relation={parent.relation}
+                  parentName={parent.name}
+                  answer={answer}
+                  onPress={() => openAnswer(parent, answer)}
+                />
+              );
+            })}
+          </View>
+        ) : null}
+
+        <View style={[styles.sectionHeader, styles.pastHeader]}>
+          <Text style={typography.sectionTitle}>지난 이야기</Text>
+          <Text style={[typography.sectionSubcopy, styles.sectionSubcopy]}>
+            예전에 남긴 말씀들이 여기 있어요
+          </Text>
+        </View>
+
         {pastAnswers.length === 0 ? (
-          <Text style={styles.empty}>아직 답변이 없어요</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>아직 지난 이야기가 없어요</Text>
+            <Text style={styles.emptyBody}>이번 주 질문부터 천천히 남겨 보세요</Text>
+          </View>
         ) : (
           pastAnswers.map((answer) => {
             const relation = parentRelationMap.get(answer.parentId);
-            if (!relation) return null;
+            const parent = parents.find((item) => item.id === answer.parentId);
+            if (!relation || !parent) return null;
             return (
-              <StoryAnswerCard key={answer.id} answer={answer} relation={relation} />
+              <StoryAnswerCard
+                key={answer.id}
+                answer={answer}
+                relation={relation}
+                onPress={() => openAnswer(parent, answer)}
+              />
             );
           })
         )}
@@ -111,35 +195,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   header: {
-    marginBottom: 24,
+    marginBottom: space.headerBottom,
   },
   title: {
-    fontSize: 22,
+    fontSize: typeScale.pageTitle,
     fontFamily: fonts.serif,
     color: colors.textPrimary,
-    marginBottom: 4,
+    lineHeight: typeScale.pageTitleLine,
+    marginBottom: Platform.OS === 'web' ? 10 : 6,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: typeScale.pageSub,
     color: colors.textMuted,
     fontFamily: fonts.sans,
+    lineHeight: typeScale.pageSubLine,
   },
-  sectionLabel: {
+  sectionHeader: {
     marginBottom: 12,
   },
-  pastLabel: {
-    marginTop: 12,
+  pastHeader: {
+    marginTop: space.section - 8,
   },
-  empty: {
+  sectionSubcopy: {
+    marginTop: 4,
+  },
+  questionHero: {
+    backgroundColor: colors.tagBackground,
+    borderRadius: layout.cardRadius,
+    padding: space.cardPad + 2,
+    marginBottom: 12,
+  },
+  weekLabel: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: colors.accent,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  questionText: {
+    fontSize: Platform.OS === 'web' ? 18 : 16,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+    lineHeight: Platform.OS === 'web' ? 28 : 24,
+  },
+  parentCards: {
+    marginBottom: 4,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: layout.cardRadius,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptyBody: {
     fontSize: 13,
     fontFamily: fonts.sans,
     color: colors.textHint,
-    textAlign: 'center',
-    paddingVertical: 24,
+    lineHeight: 19,
   },
 });

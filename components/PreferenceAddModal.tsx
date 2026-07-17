@@ -10,8 +10,11 @@ import {
 } from 'react-native';
 import { showApiErrorAlert } from '@/api/errors';
 import { TagChip } from '@/components/TagChip';
-import { PREFERENCE_CATEGORIES } from '@/constants/preferences';
-import { colors, fonts, layout, typography } from '@/constants/theme';
+import {
+  getPreferenceCategoryHint,
+  PREFERENCE_CATEGORIES,
+} from '@/constants/preferences';
+import { colors, fonts, layout } from '@/constants/theme';
 import {
   useCreatePreference,
   useDeletePreference,
@@ -85,7 +88,7 @@ export function PreferenceAddModal({
       }
       onClose();
     } catch (error) {
-      showApiErrorAlert('저장 실패', error, '선호도를 저장하지 못했습니다.');
+      showApiErrorAlert('저장 실패', error, '기록을 남기지 못했어요.');
     }
   };
 
@@ -96,7 +99,7 @@ export function PreferenceAddModal({
       await deleteMutation.mutateAsync(editingPreference.id);
       onClose();
     } catch (error) {
-      showApiErrorAlert('삭제 실패', error, '선호도를 삭제하지 못했습니다.');
+      showApiErrorAlert('삭제 실패', error, '기록을 지우지 못했어요.');
     }
   };
 
@@ -107,27 +110,30 @@ export function PreferenceAddModal({
         <View style={styles.sheet}>
           <View style={styles.handle} />
 
-          <Text style={styles.title}>{isEditMode ? '선호도 수정' : '선호도 추가'}</Text>
+          <Text style={styles.title}>{isEditMode ? '기록 고치기' : '작은 기록 남기기'}</Text>
+          <Text style={styles.subtitle}>
+            나중에 책으로 엮을 때, 더 따뜻하게 떠오를 거예요
+          </Text>
 
           <View style={styles.body}>
-            <Text style={typography.sectionLabel}>카테고리</Text>
+            <Text style={styles.fieldLabel}>어떤 이야기인가요</Text>
             <View style={styles.chips}>
               {PREFERENCE_CATEGORIES.map((item) => (
                 <TagChip
                   key={item.id}
-                  label={item.label}
+                  label={`${item.emoji} ${item.label}`}
                   selected={category === item.id}
                   onPress={() => setCategory(item.id)}
                 />
               ))}
             </View>
 
-            <Text style={[typography.sectionLabel, styles.contentLabel]}>내용</Text>
+            <Text style={styles.fieldLabel}>마음속 한 줄</Text>
             <TextInput
               style={styles.input}
               value={content}
               onChangeText={setContent}
-              placeholder="예: 갈비 / 주말 산책 해드리기"
+              placeholder={getPreferenceCategoryHint(category)}
               placeholderTextColor={colors.textHint}
               maxLength={500}
               editable={!isPending}
@@ -145,7 +151,7 @@ export function PreferenceAddModal({
                 {deleteMutation.isPending ? (
                   <ActivityIndicator color={colors.accent} />
                 ) : (
-                  <Text style={styles.deleteText}>삭제</Text>
+                  <Text style={styles.deleteText}>지우기</Text>
                 )}
               </Pressable>
             )}
@@ -157,7 +163,7 @@ export function PreferenceAddModal({
               {createMutation.isPending || updateMutation.isPending ? (
                 <ActivityIndicator color={colors.surface} />
               ) : (
-                <Text style={styles.saveText}>{isEditMode ? '저장' : '추가'}</Text>
+                <Text style={styles.saveText}>{isEditMode ? '저장하기' : '남겨두기'}</Text>
               )}
             </Pressable>
           </View>
@@ -193,31 +199,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: fonts.serif,
     color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: colors.textMuted,
+    lineHeight: 20,
     marginBottom: 20,
   },
   body: {
     marginBottom: 20,
   },
+  fieldLabel: {
+    fontSize: 13,
+    fontFamily: fonts.serif,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  contentLabel: {
-    marginBottom: 10,
+    marginBottom: 22,
   },
   input: {
-    minHeight: 88,
+    minHeight: 104,
     borderWidth: layout.borderWidth,
     borderColor: colors.border,
     borderRadius: layout.cardRadius,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 15,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.serif,
     color: colors.textPrimary,
+    lineHeight: 24,
     textAlignVertical: 'top',
   },
   footer: {
@@ -226,8 +243,8 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 52,
+    borderRadius: 14,
     borderWidth: layout.borderWidth,
     borderColor: colors.border,
     alignItems: 'center',
@@ -236,13 +253,13 @@ const styles = StyleSheet.create({
   deleteText: {
     fontSize: 15,
     fontFamily: fonts.sans,
-    color: colors.accent,
+    color: colors.textMuted,
     fontWeight: '500',
   },
   saveButton: {
     flex: 2,
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 52,
+    borderRadius: 14,
     backgroundColor: colors.textPrimary,
     alignItems: 'center',
     justifyContent: 'center',

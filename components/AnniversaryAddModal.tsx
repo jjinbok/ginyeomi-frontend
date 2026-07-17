@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -10,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { showApiErrorAlert } from '@/api/errors';
+import { showApiErrorAlert, showAppAlert } from '@/api/errors';
 import { MonthDayPicker } from '@/components/MonthDayPicker';
 import { TagChip } from '@/components/TagChip';
 import { EMOJI_OPTIONS } from '@/constants/tags';
@@ -74,7 +73,7 @@ export function AnniversaryAddModal({
         return prev.filter((id) => id !== parentId);
       }
       if (prev.length >= 2) {
-        Alert.alert('선택 제한', '부모님은 최대 2명까지 선택할 수 있어요.');
+        showAppAlert('선택 제한', '부모님은 최대 2명까지 선택할 수 있어요.');
         return prev;
       }
       return [...prev, parentId];
@@ -97,7 +96,7 @@ export function AnniversaryAddModal({
     if (!name.trim()) return;
 
     if (!isEditMode && selectedParentIds.length === 0) {
-      Alert.alert('부모님 선택', '이 기념일과 연결할 부모님을 선택해주세요.');
+      showAppAlert('부모님 선택', '이 기념일과 연결할 부모님을 선택해주세요.');
       return;
     }
 

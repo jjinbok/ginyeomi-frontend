@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,13 +11,18 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { showApiErrorAlert } from '@/api/errors';
+import { showApiErrorAlert, showAppAlert } from '@/api/errors';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PARENT_RELATIONS } from '@/constants/parents';
 import { colors, fonts, layout } from '@/constants/theme';
-import { useSubmitStoryAnswer } from '@/hooks/useStories';
+import {
+  useCreateStoryAnswer,
+  useDeleteStoryAnswer,
+  useUpdateStoryAnswer,
+} from '@/hooks/useStories';
 import type { ParentRelation } from '@/types';
 
-const ANSWER_MAX_LENGTH = 1000;
+const ANSWER_MAX_LENGTH = 500;
 
 export default function StoryAnswerScreen() {
   const router = useRouter();
@@ -28,36 +32,76 @@ export default function StoryAnswerScreen() {
     parentName: string;
     relation: ParentRelation;
     question: string;
+    answerId?: string;
+    answerText?: string;
   }>();
 
   const questionId = Number(params.questionId);
-  const [answer, setAnswer] = useState('');
-  const submitMutation = useSubmitStoryAnswer();
+  const parentId = Number(params.parentId);
+  const answerId = params.answerId ? Number(params.answerId) : null;
+  const isEditMode = answerId !== null && Number.isFinite(answerId);
+  const [answer, setAnswer] = useState(params.answerText ?? '');
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const createMutation = useCreateStoryAnswer();
+  const updateMutation = useUpdateStoryAnswer();
+  const deleteMutation = useDeleteStoryAnswer();
+  const isPending =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
   const relationInfo = PARENT_RELATIONS[params.relation ?? 'FATHER'];
 
   const handleSave = async () => {
     const trimmed = answer.trim();
     if (!trimmed) {
-      Alert.alert('답변 필요', '부모님의 답변을 입력해주세요.');
+      showAppAlert('답변 필요', '부모님의 답변을 입력해주세요.');
+      return;
+    }
+    if (!Number.isFinite(questionId) || !Number.isFinite(parentId)) {
+      showAppAlert('잘못된 접근', '질문 또는 부모님 정보가 올바르지 않아요.');
       return;
     }
 
     try {
-      await submitMutation.mutateAsync({ questionId, answerText: trimmed });
+      if (isEditMode && answerId !== null) {
+        await updateMutation.mutateAsync({
+          parentId,
+          answerId,
+          answerText: trimmed,
+        });
+      } else {
+        await createMutation.mutateAsync({
+          parentId,
+          questionId,
+          answerText: trimmed,
+        });
+      }
       router.back();
     } catch (error) {
       showApiErrorAlert('저장 실패', error, '답변을 저장하지 못했습니다. 다시 시도해주세요.');
     }
   };
 
+  const handleDelete = async () => {
+    if (!isEditMode || answerId === null || !Number.isFinite(parentId)) return;
+    try {
+      await deleteMutation.mutateAsync({ parentId, answerId });
+      setDeleteVisible(false);
+      router.back();
+    } catch (error) {
+      setDeleteVisible(false);
+      showApiErrorAlert('삭제 실패', error, '답변을 삭제하지 못했습니다.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} disabled={submitMutation.isPending} hitSlop={8}>
+        <Pressable onPress={() => router.back()} disabled={isPending} hitSlop={8}>
           <Text style={styles.cancelText}>취소</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>답변 남기기</Text>
+        <Text style={styles.headerTitle}>{isEditMode ? '답변 수정' : '답변 남기기'}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -94,19 +138,40 @@ export default function StoryAnswerScreen() {
         </View>
 
         <View style={styles.footer}>
+          {isEditMode && (
+            <Pressable
+              style={styles.deleteButton}
+              onPress={() => setDeleteVisible(true)}
+              disabled={isPending}
+            >
+              <Text style={styles.deleteButtonText}>삭제</Text>
+            </Pressable>
+          )}
           <Pressable
-            style={[styles.saveButton, submitMutation.isPending && styles.buttonDisabled]}
+            style={[styles.saveButton, isPending && styles.buttonDisabled]}
             onPress={handleSave}
-            disabled={submitMutation.isPending}
+            disabled={isPending}
           >
-            {submitMutation.isPending ? (
+            {createMutation.isPending || updateMutation.isPending ? (
               <ActivityIndicator color={colors.surface} />
             ) : (
-              <Text style={styles.saveButtonText}>답변 저장하기</Text>
+              <Text style={styles.saveButtonText}>
+                {isEditMode ? '수정 저장하기' : '답변 저장하기'}
+              </Text>
             )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      <ConfirmDialog
+        visible={deleteVisible}
+        title="답변 삭제"
+        message="이 답변을 삭제할까요?"
+        confirmLabel="삭제"
+        destructive
+        loading={deleteMutation.isPending}
+        onCancel={() => setDeleteVisible(false)}
+        onConfirm={handleDelete}
+      />
     </SafeAreaView>
   );
 }
@@ -198,13 +263,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
   },
   footer: {
+    flexDirection: 'row',
+    gap: 10,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: layout.borderWidth,
     borderTopColor: colors.border,
   },
+  deleteButton: {
+    minWidth: 76,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    color: colors.accent,
+    fontSize: 15,
+    fontFamily: fonts.sans,
+    fontWeight: '500',
+  },
   saveButton: {
+    flex: 1,
     backgroundColor: colors.textPrimary,
     borderRadius: 12,
     minHeight: 48,

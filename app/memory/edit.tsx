@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,13 +14,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { uploadPhoto } from '@/api/photos';
-import { showApiErrorAlert } from '@/api/errors';
+import { getApiErrorCode, showApiErrorAlert, showAppAlert } from '@/api/errors';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MemoryCard } from '@/components/MemoryCard';
 import { MemoryPhotos } from '@/components/MemoryPhotos';
 import { TagChip } from '@/components/TagChip';
 import { YearPicker } from '@/components/YearPicker';
 import { ACTIVITY_TAGS } from '@/constants/tags';
+import { space, webContentFrame } from '@/constants/layout';
 import { colors, fonts, layout, typography } from '@/constants/theme';
 import {
   useCreateMemory,
@@ -99,7 +99,7 @@ export default function MemoryEditScreen() {
   const pickImage = useCallback(async (index: number) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
+      showAppAlert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
       return;
     }
 
@@ -122,19 +122,22 @@ export default function MemoryEditScreen() {
     const giftString = gifts.join(', ');
     const trimmedMemo = memo.trim();
     if (!trimmedMemo) {
-      Alert.alert('메모 필요', '이날의 기억을 간단히라도 남겨주세요.');
+      showAppAlert('메모 필요', '이날의 기억을 간단히라도 남겨주세요.');
       return;
     }
 
     if (!isEditMode && !isValidYear) {
-      Alert.alert('년도 확인', '올바른 년도를 선택해주세요.');
+      showAppAlert('년도 확인', '올바른 년도를 선택해주세요.');
       return;
     }
 
     if (!isEditMode) {
       const duplicated = memories.some((m) => m.year === year);
       if (duplicated) {
-        Alert.alert('이미 있는 해', `${year}년 추억이 이미 있어요. 수정을 이용해주세요.`);
+        showAppAlert(
+          '이미 있는 해',
+          `${year}년 추억이 이미 있어요.\n목록에서 해당 해를 열어 수정해 주세요.`,
+        );
         return;
       }
     }
@@ -181,7 +184,15 @@ export default function MemoryEditScreen() {
       setSavedMemory(memory);
       setShowComplete(true);
     } catch (error) {
-      showApiErrorAlert('저장 실패', error, '기록을 저장하지 못했습니다. 다시 시도해주세요.');
+      setIsUploading(false);
+      if (getApiErrorCode(error) === 'ME002') {
+        showAppAlert(
+          '이미 있는 해',
+          `${year}년 추억이 이미 있어요.\n목록에서 해당 해를 열어 수정해 주세요.`,
+        );
+        return;
+      }
+      showApiErrorAlert('저장 실패', error, '기록을 저장하지 못했어요. 다시 시도해주세요.');
     }
   };
 
@@ -247,7 +258,7 @@ export default function MemoryEditScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={[styles.body, { minHeight: formMinHeight }]}>
+        <View style={[styles.body, webContentFrame, { minHeight: formMinHeight }]}>
           <View style={styles.contextChip}>
             <Text style={styles.contextText}>
               {params.emoji} {params.anniversaryName}
@@ -398,7 +409,8 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    paddingHorizontal: 20,
+    width: '100%',
+    paddingHorizontal: space.screenX,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -437,18 +449,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   memoContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.tagBackground,
     borderRadius: layout.cardRadius,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
     marginBottom: 20,
     minHeight: 110,
   },
   memoInput: {
     ...typography.memo,
-    padding: 14,
+    padding: layout.memoPad,
     minHeight: 90,
-    lineHeight: 22,
+    ...(Platform.OS === 'web' ? ({ whiteSpace: 'pre-wrap' } as object) : null),
   },
   charCount: {
     fontSize: 11,

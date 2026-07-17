@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { getPreferenceCategoryLabel, PREFERENCE_CATEGORIES } from '@/constants/preferences';
-import { colors, fonts, typography } from '@/constants/theme';
-import { TagChip } from '@/components/TagChip';
-import type { ParentPreference, PreferenceCategory } from '@/types';
+import { PREFERENCE_CATEGORIES } from '@/constants/preferences';
+import { space } from '@/constants/layout';
+import { colors, fonts, layout, typography } from '@/constants/theme';
+import type { ParentPreference } from '@/types';
 
 interface PreferenceSectionProps {
   preferences: ParentPreference[];
@@ -16,41 +16,68 @@ export function PreferenceSection({
   onItemPress,
 }: PreferenceSectionProps) {
   const grouped = PREFERENCE_CATEGORIES.map((category) => ({
-    category: category.id,
-    label: category.label,
+    ...category,
     items: preferences.filter((p) => p.category === category.id),
   })).filter((group) => group.items.length > 0);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={typography.sectionLabel}>선호도</Text>
-        {onAddPress && (
+        <View style={styles.headerText}>
+          <Text style={typography.sectionTitle}>알아둔 것들</Text>
+          <Text style={[typography.sectionSubcopy, styles.subcopy]}>
+            작지만 소중한 것들을 기억해 두어요
+          </Text>
+        </View>
+        {onAddPress ? (
           <Pressable onPress={onAddPress} hitSlop={8} style={styles.addButton}>
-            <Text style={styles.addText}>+ 추가</Text>
+            <Text style={styles.addText}>+ 남기기</Text>
           </Pressable>
-        )}
+        ) : null}
       </View>
 
       {grouped.length === 0 ? (
-        <Text style={styles.empty}>아직 등록된 선호도가 없어요</Text>
+        <Pressable
+          style={({ pressed }) => [styles.emptyCard, pressed && onAddPress && styles.pressed]}
+          onPress={onAddPress}
+          disabled={!onAddPress}
+        >
+          <Text style={styles.emptyMark}>✦</Text>
+          <Text style={styles.emptyTitle}>아직 남겨둔 기록이 없어요</Text>
+          <Text style={styles.emptyBody}>
+            좋아하시는 음식, 해드리고 싶은 일부터{'\n'}천천히 적어 보세요
+          </Text>
+        </Pressable>
       ) : (
-        grouped.map((group) => (
-          <View key={group.category} style={styles.group}>
-            <Text style={styles.groupLabel}>
-              {getPreferenceCategoryLabel(group.category as PreferenceCategory)}
-            </Text>
-            <View style={styles.chips}>
-              {group.items.map((item) => (
-                <TagChip
-                  key={item.id}
-                  label={item.content}
-                  onPress={onItemPress ? () => onItemPress(item) : undefined}
-                />
-              ))}
+        <View style={styles.list}>
+          {grouped.map((group) => (
+            <View key={group.id} style={styles.group}>
+              <View style={styles.groupHeader}>
+                <View style={styles.emojiBadge}>
+                  <Text style={styles.emoji}>{group.emoji}</Text>
+                </View>
+                <Text style={styles.groupLabel}>{group.label}</Text>
+              </View>
+
+              <View style={styles.items}>
+                {group.items.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={({ pressed }) => [
+                      styles.itemRow,
+                      pressed && onItemPress && styles.pressed,
+                    ]}
+                    onPress={onItemPress ? () => onItemPress(item) : undefined}
+                    disabled={!onItemPress}
+                  >
+                    <Text style={styles.itemQuote}>“</Text>
+                    <Text style={styles.itemText}>{item.content}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          </View>
-        ))
+          ))}
+        </View>
       )}
     </View>
   );
@@ -58,17 +85,27 @@ export function PreferenceSection({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 18,
+  },
+  headerText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  subcopy: {
+    marginTop: 6,
   },
   addButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    marginTop: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: layout.chipRadius,
+    backgroundColor: colors.tagBackground,
   },
   addText: {
     fontSize: 13,
@@ -76,24 +113,91 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '500',
   },
-  empty: {
+  list: {
+    gap: 22,
+  },
+  group: {
+    gap: 10,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  emojiBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.tagBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: {
+    fontSize: 15,
+  },
+  groupLabel: {
+    fontSize: 14,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+  },
+  items: {
+    gap: 8,
+    paddingLeft: 4,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  itemQuote: {
+    fontSize: 18,
+    fontFamily: fonts.serif,
+    color: colors.accent,
+    lineHeight: 22,
+    marginTop: -2,
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: fonts.serif,
+    fontWeight: '300',
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: layout.cardRadius,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    paddingVertical: 28,
+    paddingHorizontal: space.cardPad,
+    alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.88,
+  },
+  emptyMark: {
+    fontSize: 16,
+    color: colors.textHint,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontFamily: fonts.serif,
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  emptyBody: {
     fontSize: 13,
     fontFamily: fonts.sans,
     color: colors.textHint,
-    paddingVertical: 8,
-  },
-  group: {
-    marginBottom: 14,
-  },
-  groupLabel: {
-    fontSize: 12,
-    fontFamily: fonts.sans,
-    color: colors.textMuted,
-    marginBottom: 8,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

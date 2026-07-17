@@ -52,20 +52,26 @@ export interface ParentPreference {
 
 export interface StoryQuestion {
   id: number;
-  parentId: number;
-  question: string;
-  weekStart: string;
-  answerText?: string | null;
-  answeredAt?: string | null;
+  content: string;
+  weekOrder: number;
 }
 
 export interface StoryAnswer {
   id: number;
   parentId: number;
   questionId: number;
-  question: string;
+  questionContent: string;
   answerText: string;
   answeredAt: string;
+}
+
+export interface CreateStoryAnswerPayload {
+  questionId: number;
+  answerText: string;
+}
+
+export interface UpdateStoryAnswerPayload {
+  answerText: string;
 }
 
 export interface Anniversary {

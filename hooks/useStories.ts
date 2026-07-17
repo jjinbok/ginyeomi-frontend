@@ -1,88 +1,162 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchPastAnswers,
-  fetchPastAnswersForParent,
-  fetchWeeklyQuestions,
-  submitStoryAnswer,
+  createStoryAnswer,
+  deleteStoryAnswer,
+  fetchCurrentStoryQuestion,
+  fetchStoryAnswers,
+  updateStoryAnswer,
 } from '@/api/stories';
-import { MOCK_STORY_ANSWERS, MOCK_WEEKLY_QUESTIONS } from '@/api/mock';
 import type { StoryAnswer, StoryQuestion } from '@/types';
 
-const WEEKLY_CACHE_KEY = '@ginyeomi/stories/weekly';
-const PAST_CACHE_KEY = '@ginyeomi/stories/past';
+const CURRENT_CACHE_KEY = '@ginyeomi/stories/current/v2';
 
-async function fetchWeeklyWithCache(): Promise<StoryQuestion[]> {
+function answersCacheKey(parentId: number) {
+  return `@ginyeomi/stories/answers/${parentId}/v2`;
+}
+
+async function fetchCurrentWithCache(): Promise<StoryQuestion> {
   try {
-    const data = await fetchWeeklyQuestions();
-    await AsyncStorage.setItem(WEEKLY_CACHE_KEY, JSON.stringify(data));
+    const data = await fetchCurrentStoryQuestion();
+    await AsyncStorage.setItem(CURRENT_CACHE_KEY, JSON.stringify(data));
     return data;
   } catch (error) {
     if (__DEV__) {
-      console.warn('[API] fetchWeeklyQuestions failed, using cache/mock:', error);
+      console.warn('[API] fetchCurrentStoryQuestion failed, using cache:', error);
     }
-    const cached = await AsyncStorage.getItem(WEEKLY_CACHE_KEY);
+    const cached = await AsyncStorage.getItem(CURRENT_CACHE_KEY);
     if (cached) {
-      return JSON.parse(cached) as StoryQuestion[];
+      return JSON.parse(cached) as StoryQuestion;
     }
-    await AsyncStorage.setItem(WEEKLY_CACHE_KEY, JSON.stringify(MOCK_WEEKLY_QUESTIONS));
-    return MOCK_WEEKLY_QUESTIONS;
+    throw error;
   }
 }
 
-async function fetchPastWithCache(): Promise<StoryAnswer[]> {
+async function fetchAnswersWithCache(parentId: number): Promise<StoryAnswer[]> {
   try {
-    const data = await fetchPastAnswers();
-    await AsyncStorage.setItem(PAST_CACHE_KEY, JSON.stringify(data));
+    const data = await fetchStoryAnswers(parentId);
+    await AsyncStorage.setItem(answersCacheKey(parentId), JSON.stringify(data));
     return data;
   } catch (error) {
     if (__DEV__) {
-      console.warn('[API] fetchPastAnswers failed, using cache/mock:', error);
+      console.warn(`[API] fetchStoryAnswers(${parentId}) failed, using cache:`, error);
     }
-    const cached = await AsyncStorage.getItem(PAST_CACHE_KEY);
+    const cached = await AsyncStorage.getItem(answersCacheKey(parentId));
     if (cached) {
       return JSON.parse(cached) as StoryAnswer[];
     }
-    await AsyncStorage.setItem(PAST_CACHE_KEY, JSON.stringify(MOCK_STORY_ANSWERS));
-    return MOCK_STORY_ANSWERS;
+    throw error;
   }
 }
 
-export function useWeeklyQuestions() {
+export function useCurrentStoryQuestion() {
   return useQuery({
-    queryKey: ['stories', 'weekly'],
-    queryFn: fetchWeeklyWithCache,
-  });
-}
-
-export function usePastAnswers() {
-  return useQuery({
-    queryKey: ['stories', 'past'],
-    queryFn: fetchPastWithCache,
+    queryKey: ['stories', 'current'],
+    queryFn: fetchCurrentWithCache,
   });
 }
 
 export function useParentStoryAnswers(parentId: number) {
   return useQuery({
     queryKey: ['stories', 'parent', parentId],
-    queryFn: () => fetchPastAnswersForParent(parentId),
+    queryFn: () => fetchAnswersWithCache(parentId),
     enabled: parentId > 0,
   });
 }
 
-export function useSubmitStoryAnswer() {
+export function useStoryAnswersForParents(parentIds: number[]) {
+  const queries = useQueries({
+    queries: parentIds.map((parentId) => ({
+      queryKey: ['stories', 'parent', parentId] as const,
+      queryFn: () => fetchAnswersWithCache(parentId),
+      enabled: parentId > 0,
+    })),
+  });
+
+  const answers = queries
+    .flatMap((query) => query.data ?? [])
+    .sort(
+      (a, b) =>
+        (Date.parse(b.answeredAt) || 0) - (Date.parse(a.answeredAt) || 0),
+    );
+
+  return {
+    answers,
+    isLoading: queries.some((query) => query.isLoading),
+    isError: queries.some((query) => query.isError),
+    error: queries.find((query) => query.isError)?.error ?? null,
+  };
+}
+
+async function persistAnswers(parentId: number, answers: StoryAnswer[]) {
+  await AsyncStorage.setItem(answersCacheKey(parentId), JSON.stringify(answers));
+}
+
+export function useCreateStoryAnswer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ questionId, answerText }: { questionId: number; answerText: string }) =>
-      submitStoryAnswer(questionId, answerText),
+    mutationFn: ({
+      parentId,
+      questionId,
+      answerText,
+    }: {
+      parentId: number;
+      questionId: number;
+      answerText: string;
+    }) => createStoryAnswer(parentId, { questionId, answerText }),
+    onSuccess: async (created) => {
+      const key = ['stories', 'parent', created.parentId] as const;
+      const previous = queryClient.getQueryData<StoryAnswer[]>(key) ?? [];
+      const next = [...previous.filter((item) => item.id !== created.id), created];
+      queryClient.setQueryData(key, next);
+      await persistAnswers(created.parentId, next);
+    },
+  });
+}
+
+export function useUpdateStoryAnswer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      parentId,
+      answerId,
+      answerText,
+    }: {
+      parentId: number;
+      answerId: number;
+      answerText: string;
+    }) => updateStoryAnswer(parentId, answerId, { answerText }),
     onSuccess: async (updated) => {
-      const weekly = queryClient.getQueryData<StoryQuestion[]>(['stories', 'weekly']) ?? [];
-      const nextWeekly = weekly.map((q) => (q.id === updated.id ? updated : q));
-      queryClient.setQueryData(['stories', 'weekly'], nextWeekly);
-      await AsyncStorage.setItem(WEEKLY_CACHE_KEY, JSON.stringify(nextWeekly));
-      queryClient.invalidateQueries({ queryKey: ['stories', 'past'] });
-      queryClient.invalidateQueries({ queryKey: ['stories', 'parent', updated.parentId] });
+      const key = ['stories', 'parent', updated.parentId] as const;
+      const previous = queryClient.getQueryData<StoryAnswer[]>(key) ?? [];
+      const next = previous.map((item) =>
+        item.id === updated.id ? updated : item,
+      );
+      queryClient.setQueryData(key, next);
+      await persistAnswers(updated.parentId, next);
+    },
+  });
+}
+
+export function useDeleteStoryAnswer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      parentId,
+      answerId,
+    }: {
+      parentId: number;
+      answerId: number;
+    }) => deleteStoryAnswer(parentId, answerId),
+    onSuccess: async (_data, { parentId, answerId }) => {
+      const key = ['stories', 'parent', parentId] as const;
+      const previous = queryClient.getQueryData<StoryAnswer[]>(key) ?? [];
+      const next = previous.filter((item) => item.id !== answerId);
+      queryClient.setQueryData(key, next);
+      await persistAnswers(parentId, next);
     },
   });
 }

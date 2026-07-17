@@ -1,16 +1,23 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { metrics } from '@/constants/layout';
 import { colors, fonts } from '@/constants/theme';
 import { useParents } from '@/hooks/useParents';
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   return (
-    <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.5 }}>{label}</Text>
+    <Text style={{ fontSize: Platform.OS === 'web' ? 18 : 16, opacity: focused ? 1 : 0.45 }}>
+      {label}
+    </Text>
   );
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   const { data: parents = [], isLoading, isFetched } = useParents();
+  const tabBarHeight =
+    metrics.tabBarBaseHeight + (Platform.OS === 'web' ? 0 : Math.max(insets.bottom, 0));
 
   if (isLoading || !isFetched) {
     return (
@@ -40,16 +47,20 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontFamily: fonts.sans,
-          fontSize: 11,
+          fontSize: Platform.OS === 'web' ? 11 : 10,
           fontWeight: '500',
+          marginBottom: Platform.OS === 'ios' ? 0 : 2,
         },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 0.5,
-          height: 56,
-          paddingBottom: 6,
+          height: tabBarHeight,
+          paddingBottom: Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 4),
           paddingTop: 6,
+        },
+        tabBarItemStyle: {
+          paddingTop: 2,
         },
       }}
     >

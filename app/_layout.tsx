@@ -15,6 +15,7 @@ import {
   NotoSerifKR_500Medium,
 } from '@expo-google-fonts/noto-serif-kr';
 import 'react-native-reanimated';
+import { AppAlertHost } from '@/components/AppAlertHost';
 import { colors } from '@/constants/theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -78,6 +79,7 @@ export default function RootLayout() {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
         </Stack>
+        <AppAlertHost />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

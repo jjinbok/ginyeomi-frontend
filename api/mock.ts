@@ -4,8 +4,6 @@ import type {
   MemoryWithAnniversary,
   Parent,
   ParentPreference,
-  StoryAnswer,
-  StoryQuestion,
 } from '@/types';
 
 const currentYear = new Date().getFullYear();
@@ -139,62 +137,6 @@ export const MOCK_PREFERENCES: ParentPreference[] = [
   { id: 7, parentId: 1, category: 'CARE', content: '주말 산책 함께하기' },
 ];
 
-const weekStart = '2026-03-09';
-
-export const MOCK_WEEKLY_QUESTIONS: StoryQuestion[] = [
-  {
-    id: 1,
-    parentId: 1,
-    question: '어릴 때 가장 기억에 남는 순간은 무엇인가요?',
-    weekStart,
-    answerText: null,
-    answeredAt: null,
-  },
-  {
-    id: 2,
-    parentId: 2,
-    question: '요즘 가장 행복하다고 느끼는 순간은 언제인가요?',
-    weekStart,
-    answerText: '손주가 안아줄 때가 가장 행복해요.',
-    answeredAt: '2026-03-11T10:00:00Z',
-  },
-];
-
-export const MOCK_STORY_ANSWERS: StoryAnswer[] = [
-  {
-    id: 101,
-    parentId: 1,
-    questionId: 10,
-    question: '인생에서 가장 후회하지 않는 선택은 무엇인가요?',
-    answerText: '가족과 함께한 시간을 우선순위에 두기로 한 것이에요.',
-    answeredAt: '2026-03-02T09:00:00Z',
-  },
-  {
-    id: 102,
-    parentId: 2,
-    questionId: 11,
-    question: '어린 시절 꿈은 무엇이었나요?',
-    answerText: '선생님이 되고 싶었어요. 아이들 가르치는 걸 좋아했거든요.',
-    answeredAt: '2026-02-24T14:30:00Z',
-  },
-  {
-    id: 103,
-    parentId: 1,
-    questionId: 12,
-    question: '우리 가족에게 해주고 싶은 말이 있다면?',
-    answerText: '늘 고맙다. 건강하게 지내길 바란다.',
-    answeredAt: '2026-02-17T11:00:00Z',
-  },
-  {
-    id: 104,
-    parentId: 2,
-    questionId: 13,
-    question: '가장 좋아하는 계절과 그 이유는?',
-    answerText: '가을이요. 단풍이 예쁘고 날씨도 선선해서 산책하기 좋아요.',
-    answeredAt: '2026-02-10T16:00:00Z',
-  },
-];
-
 export function getMockMemoriesForAnniversary(anniversaryId: number): Memory[] {
   return MOCK_MEMORIES.filter((m) => m.anniversaryId === anniversaryId);
 }
@@ -217,12 +159,6 @@ export function getMockMemoriesForParent(parentId: number): MemoryWithAnniversar
       };
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
-
-export function getMockStoryAnswersForParent(parentId: number): StoryAnswer[] {
-  return MOCK_STORY_ANSWERS.filter((a) => a.parentId === parentId).sort(
-    (a, b) => new Date(b.answeredAt).getTime() - new Date(a.answeredAt).getTime(),
-  );
 }
 
 export function getMockPreferencesForParent(parentId: number): ParentPreference[] {

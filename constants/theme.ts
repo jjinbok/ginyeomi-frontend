@@ -1,3 +1,5 @@
+import { typeScale } from '@/constants/layout';
+
 export const colors = {
   background: '#FAF7F2',
   surface: '#FFFFFF',
@@ -20,11 +22,22 @@ export const fonts = {
 
 export const typography = {
   sectionLabel: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    fontSize: 13,
+    letterSpacing: 0.2,
+    color: colors.textMuted,
+    fontFamily: fonts.serif,
+  },
+  sectionTitle: {
+    fontSize: typeScale.sectionTitle,
+    color: colors.textPrimary,
+    fontFamily: fonts.serif,
+    lineHeight: typeScale.sectionTitleLine,
+  },
+  sectionSubcopy: {
+    fontSize: 13,
     color: colors.textHint,
     fontFamily: fonts.sans,
+    lineHeight: 19,
   },
   cardTitle: {
     fontSize: 15,
@@ -37,6 +50,8 @@ export const typography = {
     fontWeight: '300' as const,
     color: colors.textSecondary,
     fontFamily: fonts.serif,
+    /** 작성 TextInput / 상세 Text 줄바꿈 일치용 — 함부로 바꾸지 말 것 */
+    lineHeight: 22,
   },
   bodySmall: {
     fontSize: 12,
@@ -55,4 +70,6 @@ export const layout = {
   chipRadius: 20,
   fabSize: 52,
   borderWidth: 0.5,
+  /** 추억 메모 작성·상세 본문 안쪽 패딩 (줄바꿈 일치) */
+  memoPad: 14,
 } as const;
