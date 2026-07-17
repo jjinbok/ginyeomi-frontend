@@ -7,11 +7,9 @@ import {
   fetchParents,
   updateParent,
 } from '@/api/parents';
-import { fetchPreferences } from '@/api/preferences';
 import type {
   CreateParentPayload,
   Parent,
-  ParentPreference,
   UpdateParentPayload,
 } from '@/types';
 
@@ -20,6 +18,19 @@ const PARENTS_CACHE_KEY = '@ginyeomi/parents/v2';
 interface CachedQueryResult<T> {
   items: T;
   offline: boolean;
+}
+
+async function readParentsFromStorage(): Promise<Parent[]> {
+  const cached = await AsyncStorage.getItem(PARENTS_CACHE_KEY);
+  if (!cached) return [];
+  return JSON.parse(cached) as Parent[];
+}
+
+function getParentsFromListCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+): Parent[] {
+  const cached = queryClient.getQueryData<CachedQueryResult<Parent[]>>(['parents']);
+  return cached?.items ?? [];
 }
 
 async function fetchParentsWithCache(): Promise<CachedQueryResult<Parent[]>> {
@@ -31,9 +42,9 @@ async function fetchParentsWithCache(): Promise<CachedQueryResult<Parent[]>> {
     if (__DEV__) {
       console.warn('[API] fetchParents failed, using cache/empty:', error);
     }
-    const cached = await AsyncStorage.getItem(PARENTS_CACHE_KEY);
-    if (cached) {
-      return { items: JSON.parse(cached) as Parent[], offline: true };
+    const items = await readParentsFromStorage();
+    if (items.length > 0) {
+      return { items, offline: true };
     }
     throw error;
   }
@@ -46,7 +57,7 @@ async function fetchParentWithCache(parentId: number): Promise<Parent | null> {
     if (__DEV__) {
       console.warn(`[API] fetchParent(${parentId}) failed, using list cache:`, error);
     }
-    const { items } = await fetchParentsWithCache();
+    const items = await readParentsFromStorage();
     return items.find((p) => p.id === parentId) ?? null;
   }
 }
@@ -64,11 +75,21 @@ export function useParents() {
   };
 }
 
+/** 목록 캐시에 있으면 단건 API를 치지 않음 */
 export function useParent(parentId: number) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ['parents', parentId],
-    queryFn: () => fetchParentWithCache(parentId),
+    queryFn: async () => {
+      const fromList = getParentsFromListCache(queryClient).find((p) => p.id === parentId);
+      if (fromList) return fromList;
+      return fetchParentWithCache(parentId);
+    },
     enabled: parentId > 0,
+    initialData: () =>
+      getParentsFromListCache(queryClient).find((p) => p.id === parentId),
+    initialDataUpdatedAt: () => queryClient.getQueryState(['parents'])?.dataUpdatedAt,
   });
 }
 
@@ -124,28 +145,9 @@ export function useDeleteParent() {
       const nextItems = list.filter((item) => item.id !== parentId);
       queryClient.setQueryData(['parents'], { items: nextItems, offline: false });
       queryClient.removeQueries({ queryKey: ['parents', parentId] });
+      queryClient.removeQueries({ queryKey: ['preferences', parentId] });
       await AsyncStorage.setItem(PARENTS_CACHE_KEY, JSON.stringify(nextItems));
       queryClient.invalidateQueries({ queryKey: ['anniversaries'] });
     },
   });
-}
-
-export function usePreferences(parentId: number) {
-  return useQuery({
-    queryKey: ['preferences', parentId],
-    queryFn: () => fetchPreferences(parentId),
-    enabled: parentId > 0,
-  });
-}
-
-export function groupPreferencesByCategory(
-  preferences: ParentPreference[],
-): Map<ParentPreference['category'], ParentPreference[]> {
-  const grouped = new Map<ParentPreference['category'], ParentPreference[]>();
-  for (const pref of preferences) {
-    const list = grouped.get(pref.category) ?? [];
-    list.push(pref);
-    grouped.set(pref.category, list);
-  }
-  return grouped;
 }

@@ -9,12 +9,17 @@ export type MemoryTag = 'DINING_OUT' | 'GIFT' | 'TRAVEL' | 'HOME';
 
 export type ParentRelation = 'FATHER' | 'MOTHER';
 
-export type PreferenceCategory =
-  | 'FOOD'
-  | 'CLOTHING_SIZE'
-  | 'HOBBY'
-  | 'DISLIKE'
-  | 'WISHLIST';
+export type PreferenceCategory = 'FOOD' | 'HOBBY' | 'LIKE' | 'DISLIKE' | 'CARE';
+
+export interface CreatePreferencePayload {
+  category: PreferenceCategory;
+  content: string;
+}
+
+export interface UpdatePreferencePayload {
+  category: PreferenceCategory;
+  content: string;
+}
 
 /** 서버 ParentResponse — birthDate는 ISO date (yyyy-MM-dd) */
 export interface Parent {

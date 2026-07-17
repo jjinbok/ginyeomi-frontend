@@ -2,7 +2,6 @@ import { showApiErrorAlert } from '@/api/errors';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -16,16 +15,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnniversaryCard } from '@/components/AnniversaryCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ParentAddModal } from '@/components/ParentAddModal';
+import { PreferenceAddModal } from '@/components/PreferenceAddModal';
 import { PreferenceSection } from '@/components/PreferenceSection';
 import { StoryAnswerCard } from '@/components/StoryAnswerCard';
 import { TimelineMemoryCard } from '@/components/TimelineMemoryCard';
-import { ErrorBanner } from '@/components/ErrorBanner';
 import { colors, fonts, layout, typography } from '@/constants/theme';
 import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
 import { useParentTimeline } from '@/hooks/useParentTimeline';
-import { useDeleteParent, useParent, usePreferences } from '@/hooks/useParents';
+import { useDeleteParent, useParent } from '@/hooks/useParents';
+import { usePreferences } from '@/hooks/usePreferences';
 import { useParentStoryAnswers } from '@/hooks/useStories';
-import type { Anniversary, Parent } from '@/types';
+import type { Anniversary, Parent, ParentPreference } from '@/types';
 import {
   formatBirthDate,
   getDaysUntilBirthday,
@@ -40,15 +40,27 @@ export default function ParentDetailScreen() {
   const parentId = Number(params.id);
 
   const { data: parent, isLoading: parentLoading, isError: parentError, error: parentFetchError } = useParent(parentId);
-  const { data: preferences = [] } = usePreferences(parentId);
+  const { data: preferences = [], isError: preferencesError, error: preferencesFetchError } =
+    usePreferences(parentId);
   const { data: storyAnswers = [] } = useParentStoryAnswers(parentId);
-  const { anniversaries, memories, isLoading: timelineLoading } = useParentTimeline(parentId);
+  const {
+    anniversaries,
+    memories,
+    isLoading: timelineLoading,
+    isError: timelineError,
+    error: timelineFetchError,
+  } = useParentTimeline(parentId);
   const deleteMutation = useDeleteParent();
 
   useFetchErrorAlert(parentError, parentFetchError);
+  useFetchErrorAlert(preferencesError, preferencesFetchError);
+  useFetchErrorAlert(timelineError, timelineFetchError);
+
 
   const [editVisible, setEditVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [preferenceModalVisible, setPreferenceModalVisible] = useState(false);
+  const [editingPreference, setEditingPreference] = useState<ParentPreference | null>(null);
 
   const handleAnniversaryPress = useCallback(
     (anniversary: Anniversary) => {
@@ -68,6 +80,7 @@ export default function ParentDetailScreen() {
 
   const handleMemoryPress = useCallback(
     (memoryId: number, anniversaryId: number) => {
+      if (!anniversaryId) return;
       const anniversary = anniversaries.find((a) => a.id === anniversaryId);
       if (!anniversary) return;
       router.push({
@@ -84,7 +97,18 @@ export default function ParentDetailScreen() {
   );
 
   const handleAddPreference = useCallback(() => {
-    Alert.alert('준비 중', '선호도 추가 기능은 곧 연결될 예정이에요.');
+    setEditingPreference(null);
+    setPreferenceModalVisible(true);
+  }, []);
+
+  const handleEditPreference = useCallback((preference: ParentPreference) => {
+    setEditingPreference(preference);
+    setPreferenceModalVisible(true);
+  }, []);
+
+  const handleClosePreferenceModal = useCallback(() => {
+    setPreferenceModalVisible(false);
+    setEditingPreference(null);
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -103,10 +127,14 @@ export default function ParentDetailScreen() {
     }
   }, [deleteMutation, parentId, queryClient, router]);
 
-  if (parentLoading || timelineLoading || !parent) {
+  if (parentLoading || !parent) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.accent} />
+        {parentLoading ? (
+          <ActivityIndicator size="large" color={colors.accent} />
+        ) : (
+          <Text style={styles.empty}>부모님 정보를 불러오지 못했어요</Text>
+        )}
       </SafeAreaView>
     );
   }
@@ -178,7 +206,11 @@ export default function ParentDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <PreferenceSection preferences={preferences} onAddPress={handleAddPreference} />
+          <PreferenceSection
+            preferences={preferences}
+            onAddPress={handleAddPreference}
+            onItemPress={handleEditPreference}
+          />
         </View>
 
         <View style={styles.section}>
@@ -198,7 +230,9 @@ export default function ParentDetailScreen() {
 
         <View style={styles.section}>
           <Text style={[typography.sectionLabel, styles.sectionTitle]}>기억 타임라인</Text>
-          {memories.length === 0 ? (
+          {timelineLoading ? (
+            <ActivityIndicator color={colors.accent} style={{ marginTop: 8 }} />
+          ) : memories.length === 0 ? (
             <Text style={styles.empty}>아직 기록이 없어요</Text>
           ) : (
             memories.map((memory) => (
@@ -206,7 +240,7 @@ export default function ParentDetailScreen() {
                 key={memory.id}
                 memory={memory}
                 onPress={() =>
-                  handleMemoryPress(memory.id, memory.anniversaryId!)
+                  handleMemoryPress(memory.id, memory.anniversaryId ?? 0)
                 }
               />
             ))
@@ -234,6 +268,12 @@ export default function ParentDetailScreen() {
         relation={parent.relation}
         editingParent={parent}
         onClose={() => setEditVisible(false)}
+      />
+      <PreferenceAddModal
+        visible={preferenceModalVisible}
+        parentId={parentId}
+        editingPreference={editingPreference}
+        onClose={handleClosePreferenceModal}
       />
       <ConfirmDialog
         visible={deleteVisible}

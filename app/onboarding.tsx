@@ -1,3 +1,12 @@
+import { ErrorBanner } from '@/components/ErrorBanner';
+import { ParentAddModal } from '@/components/ParentAddModal';
+import { ParentAddSlot } from '@/components/ParentAddSlot';
+import { ParentCard } from '@/components/ParentCard';
+import { colors, fonts, layout } from '@/constants/theme';
+import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
+import { useParents } from '@/hooks/useParents';
+import type { ParentRelation } from '@/types';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,16 +15,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ParentAddModal } from '@/components/ParentAddModal';
-import { ParentAddSlot } from '@/components/ParentAddSlot';
-import { ParentCard } from '@/components/ParentCard';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { colors, fonts, layout } from '@/constants/theme';
-import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
-import { useParents } from '@/hooks/useParents';
-import type { ParentRelation } from '@/types';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -51,10 +51,10 @@ export default function OnboardingScreen() {
       <View style={styles.content}>
         <View style={styles.hero}>
           <Text style={styles.brand}>기녀미</Text>
-          <Text style={styles.headline}>부모님을 먼저 알려주세요</Text>
+          <Text style={styles.headline}>기념과 이야기,{'\n'}한 권의 책으로</Text>
           <Text style={styles.subcopy}>
-            기녀미는 부모님의 생신과 기념일을 챙기는 공간이에요.{'\n'}
-            아버지·어머니 정보를 등록하면 시작할 수 있어요.
+            부모님과의 기념일과 추억, 나눈 이야기를 차곡차곡 기록해 두세요.{'\n'}
+            기녀미가 소중한 순간을 한 권의 책으로 엮어 드려요.
           </Text>
         </View>
 
@@ -73,8 +73,8 @@ export default function OnboardingScreen() {
 
         <Text style={styles.hint}>
           {canStart
-            ? '둘 다 등록하면 더 알차게 쓸 수 있어요'
-            : '적어도 한 분을 등록해주세요'}
+            ? '둘 다 등록하면 더 풍성한 책이 될 수 있어요'
+            : '먼저 부모님 정보를 등록해 주세요'}
         </Text>
 
         {(isError || isOffline) && (

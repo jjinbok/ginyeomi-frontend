@@ -1,29 +1,47 @@
-import {
-  MOCK_PREFERENCES,
-  getMockPreferencesForParent,
-} from '@/api/mock';
-import type { ParentPreference } from '@/types';
+import { apiClient, unwrapResponse, unwrapVoidResponse } from '@/api/client';
+import type {
+  ApiResponse,
+  CreatePreferencePayload,
+  ParentPreference,
+  UpdatePreferencePayload,
+} from '@/types';
 
-const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Preference 엔드포인트 연결 전 목업 */
 export async function fetchPreferences(parentId: number): Promise<ParentPreference[]> {
-  await delay();
-  return getMockPreferencesForParent(parentId);
+  const response = await apiClient.get<ApiResponse<ParentPreference[]>>(
+    `/parents/${parentId}/preferences`,
+  );
+  return unwrapResponse(response);
 }
 
 export async function createPreference(
   parentId: number,
-  category: ParentPreference['category'],
-  content: string,
+  payload: CreatePreferencePayload,
 ): Promise<ParentPreference> {
-  await delay();
-  const created: ParentPreference = {
-    id: Date.now(),
-    parentId,
-    category,
-    content,
-  };
-  MOCK_PREFERENCES.push(created);
-  return created;
+  const response = await apiClient.post<ApiResponse<ParentPreference>>(
+    `/parents/${parentId}/preferences`,
+    payload,
+  );
+  return unwrapResponse(response);
+}
+
+export async function updatePreference(
+  parentId: number,
+  preferenceId: number,
+  payload: UpdatePreferencePayload,
+): Promise<ParentPreference> {
+  const response = await apiClient.patch<ApiResponse<ParentPreference>>(
+    `/parents/${parentId}/preferences/${preferenceId}`,
+    payload,
+  );
+  return unwrapResponse(response);
+}
+
+export async function deletePreference(
+  parentId: number,
+  preferenceId: number,
+): Promise<void> {
+  const response = await apiClient.delete<ApiResponse<null>>(
+    `/parents/${parentId}/preferences/${preferenceId}`,
+  );
+  unwrapVoidResponse(response);
 }

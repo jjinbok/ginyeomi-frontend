@@ -133,10 +133,10 @@ export const MOCK_PREFERENCES: ParentPreference[] = [
   { id: 1, parentId: 1, category: 'FOOD', content: '갈비, 한정식' },
   { id: 2, parentId: 1, category: 'HOBBY', content: '등산, 바둑' },
   { id: 3, parentId: 1, category: 'DISLIKE', content: '너무 짠 음식' },
-  { id: 4, parentId: 1, category: 'CLOTHING_SIZE', content: '상의 100, 하의 32' },
-  { id: 5, parentId: 2, category: 'FOOD', content: '떡국, 전통차' },
-  { id: 6, parentId: 2, category: 'HOBBY', content: '독서, 요리' },
-  { id: 7, parentId: 2, category: 'WISHLIST', content: '편한 운동화' },
+  { id: 4, parentId: 2, category: 'FOOD', content: '떡국, 전통차' },
+  { id: 5, parentId: 2, category: 'HOBBY', content: '독서, 요리' },
+  { id: 6, parentId: 2, category: 'LIKE', content: '편한 운동화' },
+  { id: 7, parentId: 1, category: 'CARE', content: '주말 산책 함께하기' },
 ];
 
 const weekStart = '2026-03-09';

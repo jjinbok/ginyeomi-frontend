@@ -6,8 +6,7 @@ import {
   fetchAnniversaries,
   updateAnniversary,
 } from '@/api/anniversaries';
-import { fetchParents } from '@/api/parents';
-import type { Anniversary, CreateAnniversaryPayload, UpdateAnniversaryPayload } from '@/types';
+import type { Anniversary, CreateAnniversaryPayload, Parent, UpdateAnniversaryPayload } from '@/types';
 import {
   enrichAnniversariesWithParents,
   loadAnniversaryParentMap,
@@ -16,38 +15,51 @@ import {
 } from '@/utils/anniversaryParents';
 
 const CACHE_KEY = '@ginyeomi/anniversaries/v2';
+const PARENTS_CACHE_KEY = '@ginyeomi/parents/v2';
 
 interface CachedQueryResult<T> {
   items: T;
   offline: boolean;
 }
 
-async function fetchWithCache(): Promise<CachedQueryResult<Anniversary[]>> {
-  try {
-    const [data, parents, parentMap] = await Promise.all([
-      fetchAnniversaries(),
-      fetchParents().catch(() => []),
-      loadAnniversaryParentMap(),
-    ]);
-    const items = enrichAnniversariesWithParents(data, parents, parentMap);
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(items));
-    return { items, offline: false };
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('[API] fetchAnniversaries failed, using cache:', error);
-    }
-    const cached = await AsyncStorage.getItem(CACHE_KEY);
-    if (cached) {
-      return { items: JSON.parse(cached) as Anniversary[], offline: true };
-    }
-    throw error;
-  }
+async function readParentsLocally(
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<Parent[]> {
+  const memory = queryClient.getQueryData<CachedQueryResult<Parent[]>>(['parents']);
+  if (memory?.items?.length) return memory.items;
+
+  const raw = await AsyncStorage.getItem(PARENTS_CACHE_KEY);
+  if (!raw) return [];
+  return JSON.parse(raw) as Parent[];
 }
 
 export function useAnniversaries() {
+  const queryClient = useQueryClient();
+
   const query = useQuery({
     queryKey: ['anniversaries'],
-    queryFn: fetchWithCache,
+    queryFn: async (): Promise<CachedQueryResult<Anniversary[]>> => {
+      try {
+        // parents는 enrich용 — 이미 있는 목록/스토리지만 쓰고 API는 치지 않음
+        const [data, parents, parentMap] = await Promise.all([
+          fetchAnniversaries(),
+          readParentsLocally(queryClient),
+          loadAnniversaryParentMap(),
+        ]);
+        const items = enrichAnniversariesWithParents(data, parents, parentMap);
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(items));
+        return { items, offline: false };
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[API] fetchAnniversaries failed, using cache:', error);
+        }
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+          return { items: JSON.parse(cached) as Anniversary[], offline: true };
+        }
+        throw error;
+      }
+    },
   });
 
   return {

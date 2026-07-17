@@ -13,6 +13,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   AN001: '기념일을 찾을 수 없어요.',
   ME001: '추억을 찾을 수 없어요.',
   ME002: '해당 연도의 추억이 이미 있어요.',
+  PR001: '선호도 정보를 찾을 수 없어요.',
 };
 
 export function getApiErrorCode(error: unknown): string | null {

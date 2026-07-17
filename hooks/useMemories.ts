@@ -7,12 +7,14 @@ function cacheKey(anniversaryId: number) {
   return `@ginyeomi/memories/${anniversaryId}`;
 }
 
-interface CachedQueryResult<T> {
-  items: T;
+export interface MemoriesQueryResult {
+  items: Memory[];
   offline: boolean;
 }
 
-async function fetchMemoriesWithCache(anniversaryId: number): Promise<CachedQueryResult<Memory[]>> {
+export async function fetchMemoriesWithCache(
+  anniversaryId: number,
+): Promise<MemoriesQueryResult> {
   try {
     const items = await fetchMemories(anniversaryId);
     await AsyncStorage.setItem(cacheKey(anniversaryId), JSON.stringify(items));
@@ -49,10 +51,13 @@ export function useCreateMemory(anniversaryId: number) {
   return useMutation({
     mutationFn: (payload: CreateMemoryPayload) => createMemory(anniversaryId, payload),
     onSuccess: async (created) => {
-      const previous = queryClient.getQueryData<CachedQueryResult<Memory[]>>(['memories', anniversaryId]);
+      const previous = queryClient.getQueryData<MemoriesQueryResult>(['memories', anniversaryId]);
       const list = previous?.items ?? [];
       const nextItems = [created, ...list.filter((item) => item.id !== created.id)];
-      queryClient.setQueryData(['memories', anniversaryId], { items: nextItems, offline: false });
+      queryClient.setQueryData(['memories', anniversaryId], {
+        items: nextItems,
+        offline: false,
+      });
       await AsyncStorage.setItem(cacheKey(anniversaryId), JSON.stringify(nextItems));
       queryClient.invalidateQueries({ queryKey: ['anniversaries'] });
     },
@@ -66,12 +71,15 @@ export function useUpdateMemory(anniversaryId: number) {
     mutationFn: ({ memoryId, payload }: { memoryId: number; payload: UpdateMemoryPayload }) =>
       updateMemory(anniversaryId, memoryId, payload),
     onSuccess: async (updated) => {
-      const previous = queryClient.getQueryData<CachedQueryResult<Memory[]>>(['memories', anniversaryId]);
+      const previous = queryClient.getQueryData<MemoriesQueryResult>(['memories', anniversaryId]);
       const list = previous?.items ?? [];
       const nextItems = list.map((item) =>
         item.id === updated.id ? { ...item, ...updated } : item,
       );
-      queryClient.setQueryData(['memories', anniversaryId], { items: nextItems, offline: false });
+      queryClient.setQueryData(['memories', anniversaryId], {
+        items: nextItems,
+        offline: false,
+      });
       await AsyncStorage.setItem(cacheKey(anniversaryId), JSON.stringify(nextItems));
     },
   });
@@ -83,10 +91,13 @@ export function useDeleteMemory(anniversaryId: number) {
   return useMutation({
     mutationFn: (memoryId: number) => deleteMemory(anniversaryId, memoryId),
     onSuccess: async (_data, memoryId) => {
-      const previous = queryClient.getQueryData<CachedQueryResult<Memory[]>>(['memories', anniversaryId]);
+      const previous = queryClient.getQueryData<MemoriesQueryResult>(['memories', anniversaryId]);
       const list = previous?.items ?? [];
       const nextItems = list.filter((item) => item.id !== memoryId);
-      queryClient.setQueryData(['memories', anniversaryId], { items: nextItems, offline: false });
+      queryClient.setQueryData(['memories', anniversaryId], {
+        items: nextItems,
+        offline: false,
+      });
       await AsyncStorage.setItem(cacheKey(anniversaryId), JSON.stringify(nextItems));
       queryClient.invalidateQueries({ queryKey: ['anniversaries'] });
     },

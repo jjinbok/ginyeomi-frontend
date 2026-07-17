@@ -9,6 +9,7 @@ interface TimelineMemoryCardProps {
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 

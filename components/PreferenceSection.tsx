@@ -1,15 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { getPreferenceCategoryLabel, PREFERENCE_CATEGORIES } from '@/constants/preferences';
-import { colors, fonts, layout, typography } from '@/constants/theme';
+import { colors, fonts, typography } from '@/constants/theme';
 import { TagChip } from '@/components/TagChip';
 import type { ParentPreference, PreferenceCategory } from '@/types';
 
 interface PreferenceSectionProps {
   preferences: ParentPreference[];
   onAddPress?: () => void;
+  onItemPress?: (preference: ParentPreference) => void;
 }
 
-export function PreferenceSection({ preferences, onAddPress }: PreferenceSectionProps) {
+export function PreferenceSection({
+  preferences,
+  onAddPress,
+  onItemPress,
+}: PreferenceSectionProps) {
   const grouped = PREFERENCE_CATEGORIES.map((category) => ({
     category: category.id,
     label: category.label,
@@ -37,7 +42,11 @@ export function PreferenceSection({ preferences, onAddPress }: PreferenceSection
             </Text>
             <View style={styles.chips}>
               {group.items.map((item) => (
-                <TagChip key={item.id} label={item.content} />
+                <TagChip
+                  key={item.id}
+                  label={item.content}
+                  onPress={onItemPress ? () => onItemPress(item) : undefined}
+                />
               ))}
             </View>
           </View>
