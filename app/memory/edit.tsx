@@ -30,9 +30,15 @@ import {
   useUpdateMemory,
 } from '@/hooks/useMemories';
 import type { Memory, MemoryTag } from '@/types';
+import { extractS3ObjectKey } from '@/utils/s3';
 
 const MEMO_MAX_LENGTH = 500;
 const MAX_PHOTOS = 3;
+
+function keysFromImageUrls(urls: string[]): string[] {
+  // 인덱스 유지를 위해 실패 시 빈 문자열 (filter 하지 않음)
+  return urls.map((url) => extractS3ObjectKey(url) ?? '');
+}
 
 export default function MemoryEditScreen() {
   const router = useRouter();
@@ -61,7 +67,11 @@ export default function MemoryEditScreen() {
   const [selectedTags, setSelectedTags] = useState<MemoryTag[]>([]);
   const [giftInput, setGiftInput] = useState('');
   const [gifts, setGifts] = useState<string[]>([]);
+  /** 서버/업로드 완료 Presigned URL — 슬롯별 표시 */
   const [photoUris, setPhotoUris] = useState<string[]>([]);
+  /** DB 저장용 S3 key — photoUris와 동일 인덱스 */
+  const [imageKeys, setImageKeys] = useState<string[]>([]);
+  /** 아직 업로드 전인 로컬 URI — 해당 슬롯은 저장 시 업로드 */
   const [localPhotos, setLocalPhotos] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [savedMemory, setSavedMemory] = useState<Memory | null>(null);
@@ -76,7 +86,10 @@ export default function MemoryEditScreen() {
       if (existingMemory.gift) {
         setGifts(existingMemory.gift.split(',').map((g) => g.trim()).filter(Boolean));
       }
-      setPhotoUris(existingMemory.photoUrls ?? []);
+      const urls = existingMemory.imageUrls ?? [];
+      setPhotoUris(urls);
+      setImageKeys(keysFromImageUrls(urls));
+      setLocalPhotos([]);
     }
   }, [existingMemory]);
 
@@ -143,6 +156,48 @@ export default function MemoryEditScreen() {
     }
 
     try {
+      const nextKeys: string[] = [];
+      const hasPendingUpload = localPhotos.some(Boolean);
+
+      if (hasPendingUpload) {
+        setIsUploading(true);
+      }
+
+      let uploadFailed = false;
+      for (let i = 0; i < MAX_PHOTOS; i++) {
+        const localUri = localPhotos[i];
+        if (localUri) {
+          try {
+            const uploaded = await uploadMemoryImage(localUri);
+            nextKeys.push(uploaded.key);
+          } catch (error) {
+            uploadFailed = true;
+            if (__DEV__) {
+              console.warn('[photos] memory upload failed:', error);
+            }
+            if (imageKeys[i]) {
+              nextKeys.push(imageKeys[i]);
+            }
+          }
+        } else if (imageKeys[i]) {
+          nextKeys.push(imageKeys[i]);
+        } else if (photoUris[i]) {
+          const recovered = extractS3ObjectKey(photoUris[i]);
+          if (recovered) nextKeys.push(recovered);
+        }
+      }
+
+      setIsUploading(false);
+
+      if (uploadFailed && nextKeys.length === 0 && hasPendingUpload) {
+        showAppAlert(
+          '사진 업로드 실패',
+          '사진을 올리지 못했어요. 네트워크를 확인한 뒤 다시 시도해주세요.',
+        );
+        return;
+      }
+
+      const payloadImages = nextKeys.slice(0, MAX_PHOTOS);
       let memory: Memory;
 
       if (isEditMode && memoryId) {
@@ -152,6 +207,7 @@ export default function MemoryEditScreen() {
             memo: trimmedMemo,
             tags: selectedTags,
             gift: giftString,
+            imageKeys: payloadImages,
           },
         });
       } else {
@@ -160,35 +216,20 @@ export default function MemoryEditScreen() {
           memo: trimmedMemo,
           tags: selectedTags,
           gift: giftString,
+          imageKeys: payloadImages,
         });
       }
 
-      const pendingPhotos = localPhotos.filter(Boolean);
-      if (pendingPhotos.length > 0) {
-        setIsUploading(true);
-        const uploadedUrls: string[] = [...photoUris];
-        let uploadFailed = false;
-        for (const localUri of pendingPhotos) {
-          try {
-            const { url } = await uploadMemoryImage(localUri);
-            uploadedUrls.push(url);
-          } catch (error) {
-            uploadFailed = true;
-            if (__DEV__) {
-              console.warn('[photos] memory upload failed:', error);
-            }
-          }
-        }
-        memory = { ...memory, photoUrls: uploadedUrls.slice(0, MAX_PHOTOS) };
-        setIsUploading(false);
-        if (uploadFailed && uploadedUrls.length === photoUris.length) {
-          showAppAlert(
-            '사진 업로드 실패',
-            '기록은 남겼지만 사진을 올리지 못했어요. 수정에서 다시 시도해주세요.',
-          );
-        }
+      if (uploadFailed) {
+        showAppAlert(
+          '일부 사진 실패',
+          '기록은 저장했지만 일부 사진을 올리지 못했어요. 수정에서 다시 시도해주세요.',
+        );
       }
 
+      setImageKeys(payloadImages);
+      setPhotoUris(memory.imageUrls ?? []);
+      setLocalPhotos([]);
       setSavedMemory(memory);
       setShowComplete(true);
     } catch (error) {

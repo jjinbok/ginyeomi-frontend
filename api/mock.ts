@@ -82,7 +82,7 @@ export const MOCK_MEMORIES: Memory[] = [
     memo: '온 가족이 모여 아버지가 좋아하시는 한정식을 먹었어요. 케이크에 "사랑해요 아빠"라고 썼더니 눈시울이 붉어지셨어요.',
     tags: ['DINING_OUT', 'GIFT'],
     gift: '남성용 향수',
-    photoUrls: [],
+    imageUrls: [],
     createdAt: `${currentYear}-03-15T12:00:00Z`,
   },
   {
@@ -92,7 +92,7 @@ export const MOCK_MEMORIES: Memory[] = [
     memo: '근처 호텔 뷔페에서 브런치를 즐겼어요. 아이들이 직접 만든 카드도 전달했답니다.',
     tags: ['DINING_OUT'],
     gift: '손목시계',
-    photoUrls: [],
+    imageUrls: [],
     createdAt: `${currentYear - 1}-03-15T12:00:00Z`,
   },
   {
@@ -102,7 +102,7 @@ export const MOCK_MEMORIES: Memory[] = [
     memo: '코로나 이후 오랜만에 온 가족 외식. 아버지가 가장 좋아하시는 갈비집에 갔어요.',
     tags: ['DINING_OUT', 'HOME'],
     gift: '',
-    photoUrls: [],
+    imageUrls: [],
     createdAt: `${currentYear - 2}-03-15T12:00:00Z`,
   },
   {
@@ -112,7 +112,7 @@ export const MOCK_MEMORIES: Memory[] = [
     memo: '제주도로 2박 3일 여행을 다녀왔어요. 바다를 보며 함께한 시간이 소중했습니다.',
     tags: ['TRAVEL'],
     gift: '커플 반지',
-    photoUrls: [],
+    imageUrls: [],
     createdAt: `${currentYear - 1}-05-20T12:00:00Z`,
   },
   {
@@ -122,7 +122,7 @@ export const MOCK_MEMORIES: Memory[] = [
     memo: '어머니가 좋아하시는 카페에서 케이크와 꽃다발을 준비했어요.',
     tags: ['DINING_OUT', 'GIFT'],
     gift: '스카프',
-    photoUrls: [],
+    imageUrls: [],
     createdAt: `${currentYear - 1}-11-03T12:00:00Z`,
   },
 ];

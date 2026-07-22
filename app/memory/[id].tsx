@@ -133,7 +133,7 @@ export default function MemoryDetailScreen() {
           <Text style={styles.heroSub}>그날의 하루를 다시 펼쳐 봤어요</Text>
         </View>
 
-        <MemoryPhotos photoUrls={memory.photoUrls} variant="detail" />
+        <MemoryPhotos photoUrls={memory.imageUrls} variant="detail" />
 
         <DetailBlock eyebrow="그날의 기록">
           {hasMemo ? (

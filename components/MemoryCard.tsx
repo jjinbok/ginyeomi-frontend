@@ -29,8 +29,8 @@ export function MemoryCard({
   showYear = true,
   enterIndex,
 }: MemoryCardProps) {
-  const mainPhoto = memory.photoUrls?.[0];
-  const photoCount = memory.photoUrls?.length ?? 0;
+  const mainPhoto = memory.imageUrls?.[0];
+  const photoCount = memory.imageUrls?.length ?? 0;
   const hasMemo = Boolean(memory.memo?.trim());
   const gifts = memory.gift
     ? memory.gift

@@ -110,8 +110,8 @@ export interface Memory {
   tags: MemoryTag[];
   createdAt: string;
   updatedAt?: string;
-  /** 클라이언트 전용 — 사진 API 연동 전 UI용 */
-  photoUrls?: string[];
+  /** 서버 MemoryResponse — S3 key로부터 만든 Presigned GET URL 목록 (표시용, 최대 3) */
+  imageUrls?: string[];
 }
 
 export interface MemoryWithAnniversary extends Memory {
@@ -141,10 +141,14 @@ export interface CreateMemoryPayload {
   memo: string;
   gift?: string;
   tags: MemoryTag[];
+  /** S3 object key 목록 (최대 3) — DB 저장용 */
+  imageKeys?: string[];
 }
 
 export interface UpdateMemoryPayload {
   memo: string;
   gift?: string;
   tags: MemoryTag[];
+  /** S3 object key 목록 (최대 3). 생략/빈 배열이면 서버가 이미지를 모두 제거함 */
+  imageKeys?: string[];
 }

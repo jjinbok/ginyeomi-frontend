@@ -22,6 +22,7 @@ The backend changes over time. This file is a **snapshot**, not live truth.
 - When the user asks to re-read / sync / refresh the server (or otherwise requests an update), **re-read the backend sources**, then **update this rule** (and `AGENTS.md` if needed) with current controllers, path prefixes, and notable DTO/contract changes.
 - Do **not** invent or guess API changes—only write what you actually read from the backend.
 - Between sync requests, still read the backend when aligning FE APIs; do not rely on this snapshot alone if something looks stale.
+
 ## Where to look
 
 - App root: `.../Ginyeomi_BE/ginyeomi`
@@ -41,5 +42,13 @@ The backend changes over time. This file is a **snapshot**, not live truth.
 | Story questions | `/api/v1/story-questions` |
 | Story answers | `/api/v1/parents/{parentId}/story-answers` |
 | Images | `/api/v1/images` |
+
+### Memory images (synced 2026-07-23)
+
+- **Upload:** `POST /api/v1/images/memories` (multipart `file`) → `{ key, url }`
+- **Create/Update body:** `imageKeys: string[]` (max 3) — S3 keys only
+- **Response (`MemoryResponse`):** `imageUrls: string[]` — Presigned GET URLs for display (keys are not returned)
+- Empty/null `imageKeys` on update clears all memory images on the server
+- FE maps `imageUrls` for UI; on edit, recovers keys from Presigned URLs via `utils/s3.ts` when re-saving unchanged photos
 
 FE base URL: `EXPO_PUBLIC_API_URL` (default `http://localhost:8080/api/v1`) in `.env.example` / `api/client.ts`.
