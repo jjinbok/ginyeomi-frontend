@@ -13,7 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { uploadPhoto } from '@/api/photos';
+import { uploadMemoryImage } from '@/api/photos';
 import { getApiErrorCode, showApiErrorAlert, showAppAlert } from '@/api/errors';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MemoryCard } from '@/components/MemoryCard';
@@ -167,18 +167,26 @@ export default function MemoryEditScreen() {
       if (pendingPhotos.length > 0) {
         setIsUploading(true);
         const uploadedUrls: string[] = [...photoUris];
+        let uploadFailed = false;
         for (const localUri of pendingPhotos) {
           try {
-            const url = await uploadPhoto(memory.id, localUri);
+            const { url } = await uploadMemoryImage(localUri);
             uploadedUrls.push(url);
-          } catch {
+          } catch (error) {
+            uploadFailed = true;
             if (__DEV__) {
-              uploadedUrls.push(localUri);
+              console.warn('[photos] memory upload failed:', error);
             }
           }
         }
         memory = { ...memory, photoUrls: uploadedUrls.slice(0, MAX_PHOTOS) };
         setIsUploading(false);
+        if (uploadFailed && uploadedUrls.length === photoUris.length) {
+          showAppAlert(
+            '사진 업로드 실패',
+            '기록은 남겼지만 사진을 올리지 못했어요. 수정에서 다시 시도해주세요.',
+          );
+        }
       }
 
       setSavedMemory(memory);

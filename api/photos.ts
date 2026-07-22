@@ -1,44 +1,68 @@
-import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
 import { apiClient, unwrapResponse } from '@/api/client';
-import type { ApiResponse, PhotoConfirmResponse, PresignedUrlResponse } from '@/types';
+import type { ApiResponse, ImageUploadResult } from '@/types';
 
-export async function getPresignedUrl(recordId: number): Promise<PresignedUrlResponse> {
-  const response = await apiClient.post<ApiResponse<PresignedUrlResponse>>(
-    `/records/${recordId}/photos/presigned-url`,
-  );
-  return unwrapResponse(response);
+type ImageKind = 'parents' | 'memories';
+
+function guessMimeAndName(localUri: string): { mimeType: string; fileName: string } {
+  const rawName = localUri.split('/').pop()?.split('?')[0] || `photo_${Date.now()}.jpg`;
+  const ext = rawName.includes('.')
+    ? rawName.split('.').pop()!.toLowerCase()
+    : 'jpg';
+  const mimeType =
+    ext === 'png'
+      ? 'image/png'
+      : ext === 'webp'
+        ? 'image/webp'
+        : ext === 'gif'
+          ? 'image/gif'
+          : 'image/jpeg';
+  const fileName = rawName.includes('.') ? rawName : `photo.${ext === 'jpeg' ? 'jpg' : ext}`;
+  return { mimeType, fileName };
 }
 
-export async function uploadPhotoToGcs(uploadUrl: string, localUri: string): Promise<void> {
-  const extension = localUri.split('.').pop()?.toLowerCase() || 'jpeg';
-  const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
+async function buildImageFormData(localUri: string): Promise<FormData> {
+  const formData = new FormData();
+  const { mimeType, fileName } = guessMimeAndName(localUri);
 
-  const file = new File(localUri);
-  const uploadResult = await file.upload(uploadUrl, {
-    httpMethod: 'PUT',
-    mimeType,
-    headers: { 'Content-Type': mimeType },
-  });
-
-  if (uploadResult.status < 200 || uploadResult.status >= 300) {
-    throw new Error('사진 업로드에 실패했습니다.');
+  if (Platform.OS === 'web') {
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+    formData.append('file', blob, fileName);
+  } else {
+    formData.append('file', {
+      uri: localUri,
+      name: fileName,
+      type: mimeType,
+    } as unknown as Blob);
   }
+
+  return formData;
 }
 
-export async function confirmPhoto(
-  recordId: number,
-  objectName: string,
-): Promise<PhotoConfirmResponse> {
-  const response = await apiClient.post<ApiResponse<PhotoConfirmResponse>>(
-    `/records/${recordId}/photos/confirm`,
-    { objectName },
+/**
+ * multipart 업로드 → 서버가 S3에 저장 후
+ * { key: DB 저장용, url: 즉시 표시용 Presigned GET } 반환
+ */
+async function uploadImage(kind: ImageKind, localUri: string): Promise<ImageUploadResult> {
+  const formData = await buildImageFormData(localUri);
+  const response = await apiClient.post<ApiResponse<ImageUploadResult>>(
+    `/images/${kind}`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60_000,
+    },
   );
   return unwrapResponse(response);
 }
 
-export async function uploadPhoto(recordId: number, localUri: string): Promise<string> {
-  const { uploadUrl, objectName } = await getPresignedUrl(recordId);
-  await uploadPhotoToGcs(uploadUrl, localUri);
-  const { url } = await confirmPhoto(recordId, objectName);
-  return url;
+/** POST /images/parents */
+export async function uploadParentImage(localUri: string): Promise<ImageUploadResult> {
+  return uploadImage('parents', localUri);
+}
+
+/** POST /images/memories */
+export async function uploadMemoryImage(localUri: string): Promise<ImageUploadResult> {
+  return uploadImage('memories', localUri);
 }

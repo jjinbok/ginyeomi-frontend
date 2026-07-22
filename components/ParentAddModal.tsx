@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Switch,
@@ -8,7 +9,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { showApiErrorAlert } from '@/api/errors';
+import * as ImagePicker from 'expo-image-picker';
+import { showApiErrorAlert, showAppAlert } from '@/api/errors';
+import { uploadParentImage } from '@/api/photos';
 import { AnimatedModal } from '@/components/AnimatedModal';
 import { MonthDayPicker } from '@/components/MonthDayPicker';
 import { YearPicker } from '@/components/YearPicker';
@@ -56,7 +59,11 @@ export function ParentAddModal({
   const [month, setMonth] = useState(1);
   const [day, setDay] = useState(1);
   const [lunarBirth, setLunarBirth] = useState(false);
-  const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
+  /** undefined: 변경 없음 / null: 삭제 / string: 새 업로드 key */
+  const [pendingImageKey, setPendingImageKey] = useState<string | null | undefined>(undefined);
+  const [localProfileUri, setLocalProfileUri] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -64,7 +71,9 @@ export function ParentAddModal({
     setMonth(1);
     setDay(1);
     setLunarBirth(false);
-    setProfileImageUrl('');
+    setProfilePreviewUrl('');
+    setPendingImageKey(undefined);
+    setLocalProfileUri(null);
   }, []);
 
   useEffect(() => {
@@ -77,13 +86,15 @@ export function ParentAddModal({
       setMonth(parsed.month);
       setDay(parsed.day);
       setLunarBirth(editingParent.lunarBirth);
-      setProfileImageUrl(editingParent.profileImageUrl ?? '');
+      setProfilePreviewUrl(editingParent.profileImageUrl ?? '');
+      setPendingImageKey(undefined);
+      setLocalProfileUri(null);
     } else {
       resetForm();
     }
   }, [visible, editingParent, resetForm]);
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = createMutation.isPending || updateMutation.isPending || isUploadingImage;
 
   const handleDateChange = useCallback((nextMonth: number, nextDay: number) => {
     setMonth(nextMonth);
@@ -95,17 +106,62 @@ export function ParentAddModal({
     onClose();
   };
 
+  const pickProfileImage = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAppAlert('권한 필요', '사진을 선택하려면 갤러리 접근 권한이 필요합니다.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setLocalProfileUri(result.assets[0].uri);
+    }
+  }, []);
+
+  const clearProfileImage = useCallback(() => {
+    setLocalProfileUri(null);
+    setProfilePreviewUrl('');
+    setPendingImageKey(null);
+  }, []);
+
   const handleSave = async () => {
     if (!name.trim()) return;
 
     try {
+      let nextKey = pendingImageKey;
+
+      if (localProfileUri) {
+        setIsUploadingImage(true);
+        try {
+          const uploaded = await uploadParentImage(localProfileUri);
+          nextKey = uploaded.key;
+          setPendingImageKey(uploaded.key);
+          setProfilePreviewUrl(uploaded.url);
+          setLocalProfileUri(null);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+
       let result: Parent;
 
       if (isEditMode && editingParent) {
+        // 서버는 key만 받음 — 사진 변경/삭제가 없으면 API 생략
+        if (nextKey === undefined) {
+          onClose();
+          return;
+        }
         result = await updateMutation.mutateAsync({
           parentId: editingParent.id,
           payload: {
-            profileImageUrl: profileImageUrl.trim() || null,
+            profileImageKey: nextKey,
           },
         });
       } else {
@@ -114,7 +170,7 @@ export function ParentAddModal({
           relation,
           birthDate: toBirthDate(year, month, day),
           lunarBirth,
-          profileImageUrl: profileImageUrl.trim() || null,
+          profileImageKey: typeof nextKey === 'string' ? nextKey : null,
         });
         resetForm();
       }
@@ -122,6 +178,7 @@ export function ParentAddModal({
       onSuccess?.(result);
       onClose();
     } catch (error) {
+      setIsUploadingImage(false);
       showApiErrorAlert('저장 실패', error, '부모님 정보를 저장하지 못했습니다.');
     }
   };
@@ -159,7 +216,7 @@ export function ParentAddModal({
 
             {isEditMode ? (
               <Text style={styles.editNotice}>
-                이름·생일은 수정할 수 없어요. 프로필 사진 URL만 변경할 수 있습니다.
+                이름·생일은 수정할 수 없어요. 프로필 사진만 변경할 수 있습니다.
               </Text>
             ) : null}
 
@@ -192,16 +249,32 @@ export function ParentAddModal({
               </>
             )}
 
-            <Text style={[typography.sectionLabel, styles.sectionGap]}>프로필 사진 URL (선택)</Text>
-            <TextInput
-              style={styles.urlInput}
-              value={profileImageUrl}
-              onChangeText={setProfileImageUrl}
-              placeholder="https://..."
-              placeholderTextColor={colors.textHint}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <Text style={[typography.sectionLabel, styles.sectionGap]}>프로필 사진 (선택)</Text>
+            <View style={styles.photoRow}>
+              <Pressable
+                style={({ pressed }) => [styles.photoPicker, pressed && styles.photoPressed]}
+                onPress={pickProfileImage}
+                disabled={isPending}
+              >
+                {localProfileUri || profilePreviewUrl ? (
+                  <Image
+                    source={{ uri: localProfileUri || profilePreviewUrl }}
+                    style={styles.photoPreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <Text style={styles.photoPlaceholderMark}>+</Text>
+                    <Text style={styles.photoPlaceholderText}>사진 선택</Text>
+                  </View>
+                )}
+              </Pressable>
+              {(localProfileUri || profilePreviewUrl) && !isPending ? (
+                <Pressable onPress={clearProfileImage} hitSlop={8}>
+                  <Text style={styles.photoClear}>사진 지우기</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           <View style={styles.footer}>
@@ -290,17 +363,46 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 18,
   },
-  urlInput: {
-    height: 44,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    fontFamily: fonts.sans,
-    color: colors.textPrimary,
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     marginBottom: 8,
+  },
+  photoPicker: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    backgroundColor: colors.tagBackground,
+  },
+  photoPressed: {
+    opacity: 0.88,
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  photoPlaceholderMark: {
+    fontSize: 20,
+    color: colors.accent,
+    lineHeight: 24,
+  },
+  photoPlaceholderText: {
+    fontSize: 10,
+    fontFamily: fonts.sans,
+    color: colors.textMuted,
+  },
+  photoClear: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: colors.textMuted,
   },
   sectionGap: {
     marginBottom: 8,

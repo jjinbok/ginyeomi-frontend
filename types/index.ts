@@ -21,7 +21,9 @@ export interface UpdatePreferencePayload {
   content: string;
 }
 
-/** 서버 ParentResponse — birthDate는 ISO date (yyyy-MM-dd) */
+/** 서버 ParentResponse — birthDate는 ISO date (yyyy-MM-dd)
+ *  profileImageUrl: S3 key로부터 만든 Presigned GET URL (표시용)
+ */
 export interface Parent {
   id: number;
   name: string;
@@ -31,16 +33,24 @@ export interface Parent {
   profileImageUrl?: string | null;
 }
 
+/** 서버 ImageUploadResponse */
+export interface ImageUploadResult {
+  /** S3 object key — DB에 저장 */
+  key: string;
+  /** Presigned GET URL — 즉시 표시 */
+  url: string;
+}
+
 export interface CreateParentPayload {
   name: string;
   relation: ParentRelation;
   birthDate: string;
   lunarBirth: boolean;
-  profileImageUrl?: string | null;
+  profileImageKey?: string | null;
 }
 
 export interface UpdateParentPayload {
-  profileImageUrl?: string | null;
+  profileImageKey?: string | null;
 }
 
 export interface ParentPreference {
@@ -107,16 +117,6 @@ export interface Memory {
 export interface MemoryWithAnniversary extends Memory {
   anniversaryName: string;
   anniversaryEmoji: string;
-}
-
-export interface PresignedUrlResponse {
-  uploadUrl: string;
-  objectName: string;
-}
-
-export interface PhotoConfirmResponse {
-  photoId: number;
-  url: string;
 }
 
 export interface CreateAnniversaryPayload {
