@@ -1,4 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { softRiseStagger } from '@/constants/motion';
 import { metrics, space, typeScale } from '@/constants/layout';
 import { colors, fonts, layout } from '@/constants/theme';
 import type { Parent } from '@/types';
@@ -11,9 +13,10 @@ import {
 interface ParentCardProps {
   parent: Parent;
   onPress: () => void;
+  enterIndex?: number;
 }
 
-export function ParentCard({ parent, onPress }: ParentCardProps) {
+export function ParentCard({ parent, onPress, enterIndex = 0 }: ParentCardProps) {
   const relationLabel = getParentRelationLabel(parent);
   const emoji = getParentDisplayEmoji(parent);
   const daysUntilBirthday = getDaysUntilBirthday(parent.birthDate);
@@ -21,10 +24,14 @@ export function ParentCard({ parent, onPress }: ParentCardProps) {
   const photo = metrics.parentPhoto;
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      onPress={onPress}
+    <Animated.View
+      style={styles.wrap}
+      entering={softRiseStagger(enterIndex, 80)}
     >
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        onPress={onPress}
+      >
       <View style={styles.photoArea}>
         {parent.profileImageUrl ? (
           <Image
@@ -49,21 +56,35 @@ export function ParentCard({ parent, onPress }: ParentCardProps) {
       <Text style={styles.name} numberOfLines={1}>
         {parent.name}
       </Text>
-      <View style={[styles.badge, isUpcoming ? styles.badgeAccent : styles.badgeMuted]}>
-        <Text
-          style={[styles.badgeText, isUpcoming ? styles.badgeTextAccent : styles.badgeTextMuted]}
-          numberOfLines={1}
-        >
-          {isUpcoming
-            ? `생신 ${daysUntilBirthday}일 전`
-            : `생신까지 ${daysUntilBirthday}일`}
-        </Text>
+      <View style={styles.ddayBlock}>
+        {isUpcoming ? (
+          <>
+            <Text style={styles.ddayValue}>
+              {daysUntilBirthday === 0 ? '오늘' : daysUntilBirthday}
+            </Text>
+            {daysUntilBirthday > 0 ? (
+              <Text style={styles.ddayHint}>일 전 생신</Text>
+            ) : (
+              <Text style={styles.ddayHint}>생신이에요</Text>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={styles.ddayValueMuted}>{daysUntilBirthday}</Text>
+            <Text style={styles.ddayHintMuted}>일 뒤 생신</Text>
+          </>
+        )}
       </View>
     </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    minWidth: 0,
+  },
   card: {
     flex: 1,
     minWidth: 0,
@@ -104,27 +125,32 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     maxWidth: '100%',
   },
-  badge: {
-    borderRadius: layout.chipRadius,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  ddayBlock: {
+    alignItems: 'center',
     maxWidth: '100%',
   },
-  badgeAccent: {
-    backgroundColor: colors.accent,
+  ddayValue: {
+    fontSize: 20,
+    fontFamily: fonts.serif,
+    color: colors.accent,
+    lineHeight: 26,
   },
-  badgeMuted: {
-    backgroundColor: colors.tagBackground,
+  ddayValueMuted: {
+    fontSize: 18,
+    fontFamily: fonts.serif,
+    color: colors.textSecondary,
+    lineHeight: 24,
   },
-  badgeText: {
+  ddayHint: {
     fontSize: 11,
     fontFamily: fonts.sans,
-    fontWeight: '500',
-  },
-  badgeTextAccent: {
-    color: colors.surface,
-  },
-  badgeTextMuted: {
     color: colors.textMuted,
+    marginTop: 2,
+  },
+  ddayHintMuted: {
+    fontSize: 11,
+    fontFamily: fonts.sans,
+    color: colors.textHint,
+    marginTop: 2,
   },
 });

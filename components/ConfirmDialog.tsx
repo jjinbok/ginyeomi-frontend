@@ -1,4 +1,5 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AnimatedModal } from '@/components/AnimatedModal';
 import { colors, fonts, layout } from '@/constants/theme';
 
 interface ConfirmDialogProps {
@@ -25,53 +26,45 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={loading ? undefined : onCancel} />
-        <View style={styles.card}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          <View style={styles.actions}>
-            <Pressable
-              style={[styles.button, styles.cancelButton]}
-              onPress={onCancel}
-              disabled={loading}
-            >
-              <Text style={styles.cancelText}>{cancelLabel}</Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.button,
-                destructive ? styles.destructiveButton : styles.confirmButton,
-                loading && styles.disabled,
-              ]}
-              onPress={onConfirm}
-              disabled={loading}
-            >
-              <Text
-                style={destructive ? styles.destructiveText : styles.confirmText}
-              >
-                {loading ? '처리 중…' : confirmLabel}
-              </Text>
-            </Pressable>
-          </View>
+    <AnimatedModal
+      visible={visible}
+      onRequestClose={loading ? () => undefined : onCancel}
+      variant="dialog"
+      dismissOnBackdrop={!loading}
+    >
+      <View style={styles.card}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.message}>{message}</Text>
+        <View style={styles.actions}>
+          <Pressable
+            style={[styles.button, styles.cancelButton]}
+            onPress={onCancel}
+            disabled={loading}
+          >
+            <Text style={styles.cancelText}>{cancelLabel}</Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.button,
+              destructive ? styles.destructiveButton : styles.confirmButton,
+              loading && styles.disabled,
+            ]}
+            onPress={onConfirm}
+            disabled={loading}
+          >
+            <Text style={destructive ? styles.destructiveText : styles.confirmText}>
+              {loading ? '처리 중…' : confirmLabel}
+            </Text>
+          </Pressable>
         </View>
       </View>
-    </Modal>
+    </AnimatedModal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(44, 36, 22, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
   card: {
     width: '100%',
-    maxWidth: 340,
     backgroundColor: colors.background,
     borderRadius: layout.cardRadius,
     padding: 24,

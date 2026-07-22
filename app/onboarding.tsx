@@ -61,12 +61,12 @@ export default function OnboardingScreen() {
 
         <View style={styles.cardRow}>
           {father ? (
-            <ParentCard parent={father} onPress={() => openAddModal('FATHER')} />
+            <ParentCard parent={father} onPress={() => openAddModal('FATHER')} enterIndex={0} />
           ) : (
             <ParentAddSlot relation="FATHER" onPress={() => openAddModal('FATHER')} />
           )}
           {mother ? (
-            <ParentCard parent={mother} onPress={() => openAddModal('MOTHER')} />
+            <ParentCard parent={mother} onPress={() => openAddModal('MOTHER')} enterIndex={1} />
           ) : (
             <ParentAddSlot relation="MOTHER" onPress={() => openAddModal('MOTHER')} />
           )}

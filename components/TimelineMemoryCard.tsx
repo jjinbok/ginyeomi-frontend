@@ -1,10 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { softRiseStagger } from '@/constants/motion';
 import { colors, fonts, layout, typography } from '@/constants/theme';
 import type { MemoryWithAnniversary } from '@/types';
 
 interface TimelineMemoryCardProps {
   memory: MemoryWithAnniversary;
   onPress?: () => void;
+  enterIndex?: number;
 }
 
 function formatDate(iso: string): string {
@@ -13,24 +16,30 @@ function formatDate(iso: string): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function TimelineMemoryCard({ memory, onPress }: TimelineMemoryCardProps) {
+export function TimelineMemoryCard({
+  memory,
+  onPress,
+  enterIndex = 0,
+}: TimelineMemoryCardProps) {
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && onPress && styles.pressed]}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <View style={styles.header}>
-        <Text style={styles.anniversary}>
-          {memory.anniversaryEmoji} {memory.anniversaryName}
+    <Animated.View entering={softRiseStagger(enterIndex, 100)}>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && onPress && styles.pressed]}
+        onPress={onPress}
+        disabled={!onPress}
+      >
+        <View style={styles.header}>
+          <Text style={styles.anniversary}>
+            {memory.anniversaryEmoji} {memory.anniversaryName}
+          </Text>
+          <Text style={styles.year}>{memory.year}년</Text>
+        </View>
+        <Text style={styles.memo} numberOfLines={3}>
+          {memory.memo}
         </Text>
-        <Text style={styles.year}>{memory.year}년</Text>
-      </View>
-      <Text style={styles.memo} numberOfLines={3}>
-        {memory.memo}
-      </Text>
-      <Text style={styles.date}>{formatDate(memory.createdAt)}</Text>
-    </Pressable>
+        <Text style={styles.date}>{formatDate(memory.createdAt)}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

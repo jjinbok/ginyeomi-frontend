@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { showApiErrorAlert } from '@/api/errors';
+import { AnimatedModal } from '@/components/AnimatedModal';
 import { TagChip } from '@/components/TagChip';
 import {
   getPreferenceCategoryHint,
@@ -104,10 +104,13 @@ export function PreferenceAddModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
-        <View style={styles.sheet}>
+    <AnimatedModal
+      visible={visible}
+      onRequestClose={handleClose}
+      variant="sheet"
+      backdropColor="rgba(44, 36, 22, 0.35)"
+    >
+      <View style={styles.sheet}>
           <View style={styles.handle} />
 
           <Text style={styles.title}>{isEditMode ? '기록 고치기' : '작은 기록 남기기'}</Text>
@@ -168,17 +171,11 @@ export function PreferenceAddModal({
             </Pressable>
           </View>
         </View>
-      </View>
-    </Modal>
+    </AnimatedModal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: 20,

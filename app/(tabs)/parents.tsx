@@ -93,12 +93,12 @@ export default function ParentsTabScreen() {
 
         <View style={styles.cardRow}>
           {father ? (
-            <ParentCard parent={father} onPress={() => handleCardPress(father)} />
+            <ParentCard parent={father} onPress={() => handleCardPress(father)} enterIndex={0} />
           ) : (
             <ParentAddSlot relation="FATHER" onPress={() => openAddModal('FATHER')} />
           )}
           {mother ? (
-            <ParentCard parent={mother} onPress={() => handleCardPress(mother)} />
+            <ParentCard parent={mother} onPress={() => handleCardPress(mother)} enterIndex={1} />
           ) : (
             <ParentAddSlot relation="MOTHER" onPress={() => openAddModal('MOTHER')} />
           )}

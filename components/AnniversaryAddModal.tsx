@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Switch,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { showApiErrorAlert, showAppAlert } from '@/api/errors';
+import { AnimatedModal } from '@/components/AnimatedModal';
 import { MonthDayPicker } from '@/components/MonthDayPicker';
 import { TagChip } from '@/components/TagChip';
 import { EMOJI_OPTIONS } from '@/constants/tags';
@@ -135,10 +135,13 @@ export function AnniversaryAddModal({
     name.trim().length > 0 && (isEditMode || selectedParentIds.length > 0) && !isPending;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
-        <View style={styles.sheet}>
+    <AnimatedModal
+      visible={visible}
+      onRequestClose={handleClose}
+      variant="sheet"
+      backdropColor="rgba(44, 36, 22, 0.35)"
+    >
+      <View style={styles.sheet}>
           <View style={styles.handle} />
 
           <Text style={styles.title}>{isEditMode ? '기념일 수정' : '기념일 추가'}</Text>
@@ -228,17 +231,11 @@ export function AnniversaryAddModal({
             </Pressable>
           </View>
         </View>
-      </View>
-    </Modal>
+    </AnimatedModal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(44, 36, 22, 0.35)',
-  },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 20,

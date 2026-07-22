@@ -3,8 +3,9 @@ import { AnniversaryCard } from '@/components/AnniversaryCard';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { FAB } from '@/components/FAB';
 import { getScreenContentStyle } from '@/components/ScreenBody';
+import { softRise } from '@/constants/motion';
 import { space, typeScale } from '@/constants/layout';
-import { colors, fonts, layout, typography } from '@/constants/theme';
+import { colors, fonts, typography } from '@/constants/theme';
 import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
 import { useAnniversaries } from '@/hooks/useAnniversaries';
 import type { Anniversary } from '@/types';
@@ -21,6 +22,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 function UpcomingCard({
@@ -30,26 +32,46 @@ function UpcomingCard({
   anniversary: Anniversary;
   onPress: () => void;
 }) {
+  const isToday = anniversary.daysUntilNext === 0;
+  const days = anniversary.daysUntilNext;
+
   return (
-    <Pressable
-      style={({ pressed }) => [styles.upcomingCard, pressed && styles.pressed]}
-      onPress={onPress}
-    >
-      <Text style={styles.upcomingLabel}>곧 다가오는 날</Text>
-      <Text style={styles.upcomingName} numberOfLines={2}>
-        {anniversary.emoji} {anniversary.name}
-      </Text>
-      <Text style={styles.upcomingMeta}>
-        {anniversary.month}월 {anniversary.day}일
-      </Text>
-      <View style={styles.upcomingBadge}>
-        <Text style={styles.upcomingDday}>
-          {anniversary.daysUntilNext === 0
-            ? '오늘이에요'
-            : `${anniversary.daysUntilNext}일 남았어요`}
-        </Text>
-      </View>
-    </Pressable>
+    <Animated.View entering={softRise(60)}>
+      <Pressable
+        style={({ pressed }) => [styles.upcomingCard, pressed && styles.pressed]}
+        onPress={onPress}
+      >
+        <Text style={styles.upcomingEyebrow}>곧 다가오는 날</Text>
+
+        <View style={styles.upcomingBody}>
+          <View style={styles.upcomingMain}>
+            <View style={styles.upcomingEmojiWrap}>
+              <Text style={styles.upcomingEmoji}>{anniversary.emoji}</Text>
+            </View>
+            <View style={styles.upcomingCopy}>
+              <Text style={styles.upcomingName} numberOfLines={2}>
+                {anniversary.name}
+              </Text>
+              <Text style={styles.upcomingMeta}>
+                {anniversary.month}월 {anniversary.day}일
+                {anniversary.recurring ? ' · 매년' : ' · 올해만'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.upcomingDday}>
+            {isToday ? (
+              <Text style={styles.upcomingToday}>오늘</Text>
+            ) : (
+              <>
+                <Text style={styles.upcomingDays}>{days}</Text>
+                <Text style={styles.upcomingDaysUnit}>일 남았어요</Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -138,12 +160,16 @@ export default function HomeScreen() {
             </View>
           </>
         }
-        renderItem={({ item }) => (
-          <AnniversaryCard anniversary={item} onPress={() => handleCardPress(item)} />
+        renderItem={({ item, index }) => (
+          <AnniversaryCard
+            anniversary={item}
+            onPress={() => handleCardPress(item)}
+            enterIndex={index}
+          />
         )}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>📅</Text>
+            <Text style={styles.emptyMark}>✦</Text>
             <Text style={styles.emptyTitle}>첫 기념일을 남겨보세요</Text>
             <Text style={styles.emptyBody}>
               오른쪽 아래 + 버튼으로{'\n'}생신이나 특별한 날을 추가할 수 있어요
@@ -192,48 +218,83 @@ const styles = StyleSheet.create({
     lineHeight: typeScale.pageSubLine,
   },
   upcomingCard: {
-    backgroundColor: colors.surface,
-    borderRadius: layout.cardRadius,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    padding: space.cardPad + 2,
-    marginBottom: space.section - 8,
+    backgroundColor: colors.tagBackground,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    marginBottom: space.section - 4,
   },
   pressed: {
-    opacity: 0.9,
+    opacity: 0.92,
   },
-  upcomingLabel: {
+  upcomingEyebrow: {
     fontSize: 12,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.serif,
     color: colors.accent,
-    fontWeight: '500',
-    marginBottom: 8,
+    letterSpacing: 0.3,
+    marginBottom: 14,
+  },
+  upcomingBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  upcomingMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  upcomingEmojiWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upcomingEmoji: {
+    fontSize: 26,
+  },
+  upcomingCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   upcomingName: {
-    fontSize: Platform.OS === 'web' ? 22 : 20,
+    fontSize: Platform.OS === 'web' ? 20 : 18,
     fontFamily: fonts.serif,
     color: colors.textPrimary,
-    lineHeight: Platform.OS === 'web' ? 30 : 28,
+    lineHeight: Platform.OS === 'web' ? 28 : 26,
     marginBottom: 4,
   },
   upcomingMeta: {
     fontSize: 13,
     fontFamily: fonts.sans,
     color: colors.textMuted,
-    marginBottom: 12,
-  },
-  upcomingBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accent,
-    borderRadius: layout.chipRadius,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
   },
   upcomingDday: {
-    fontSize: 13,
-    color: colors.surface,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingLeft: 4,
+  },
+  upcomingDays: {
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.accent,
+    lineHeight: 34,
+  },
+  upcomingDaysUnit: {
+    fontSize: 11,
     fontFamily: fonts.sans,
-    fontWeight: '500',
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  upcomingToday: {
+    fontSize: 18,
+    fontFamily: fonts.serif,
+    color: colors.accent,
   },
   sectionHeader: {
     marginBottom: 12,
@@ -242,18 +303,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: layout.cardRadius,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    backgroundColor: colors.tagBackground,
+    borderRadius: 20,
     paddingVertical: 32,
     paddingHorizontal: 18,
     alignItems: 'center',
   },
-  emptyEmoji: {
-    fontSize: 26,
-    marginBottom: 10,
+  emptyMark: {
+    fontSize: 16,
+    color: colors.textHint,
+    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 15,

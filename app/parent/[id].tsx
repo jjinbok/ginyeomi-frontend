@@ -253,12 +253,19 @@ export default function ParentDetailScreen() {
             {formatBirthDate(parent.birthDate, parent.lunarBirth)}
           </Text>
 
-          <View style={[styles.birthdayBadge, isBirthdaySoon && styles.birthdayBadgeSoon]}>
-            <Text style={[styles.birthdayText, isBirthdaySoon && styles.birthdayTextSoon]}>
-              {isBirthdaySoon
-                ? `생신이 ${daysUntilBirthday}일 남았어요`
-                : `생신까지 ${daysUntilBirthday}일`}
-            </Text>
+          <View style={styles.birthdayBlock}>
+            {daysUntilBirthday === 0 ? (
+              <Text style={styles.birthdayToday}>오늘 생신이에요</Text>
+            ) : (
+              <>
+                <Text style={[styles.birthdayDays, isBirthdaySoon && styles.birthdayDaysSoon]}>
+                  {daysUntilBirthday}
+                </Text>
+                <Text style={styles.birthdayHint}>
+                  {isBirthdaySoon ? '일 뒤면 생신이에요' : '일 뒤 생신'}
+                </Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -275,10 +282,11 @@ export default function ParentDetailScreen() {
           {anniversaries.length === 0 ? (
             <EmptyBlock title="연결된 기념일이 없어요" body="생신이나 특별한 날을 추가해 보세요" />
           ) : (
-            anniversaries.map((anniversary) => (
+            anniversaries.map((anniversary, index) => (
               <AnniversaryCard
                 key={anniversary.id}
                 anniversary={anniversary}
+                enterIndex={index}
                 onPress={() => handleAnniversaryPress(anniversary)}
               />
             ))
@@ -292,10 +300,11 @@ export default function ParentDetailScreen() {
           ) : memories.length === 0 ? (
             <EmptyBlock title="아직 기록이 없어요" body="기념일에서 그해의 추억을 남겨 보세요" />
           ) : (
-            memories.map((memory) => (
+            memories.map((memory, index) => (
               <TimelineMemoryCard
                 key={memory.id}
                 memory={memory}
+                enterIndex={index}
                 onPress={() => handleMemoryPress(memory.id, memory.anniversaryId ?? 0)}
               />
             ))
@@ -438,23 +447,29 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 12,
   },
-  birthdayBadge: {
-    backgroundColor: colors.tagBackground,
-    borderRadius: layout.chipRadius,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+  birthdayBlock: {
+    alignItems: 'center',
+    marginTop: 4,
   },
-  birthdayBadgeSoon: {
-    backgroundColor: colors.accent,
+  birthdayDays: {
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.textSecondary,
+    lineHeight: 34,
   },
-  birthdayText: {
+  birthdayDaysSoon: {
+    color: colors.accent,
+  },
+  birthdayHint: {
     fontSize: 13,
     fontFamily: fonts.sans,
-    color: colors.accent,
-    fontWeight: '500',
+    color: colors.textMuted,
+    marginTop: 4,
   },
-  birthdayTextSoon: {
-    color: colors.surface,
+  birthdayToday: {
+    fontSize: 16,
+    fontFamily: fonts.serif,
+    color: colors.accent,
   },
   section: {
     marginBottom: space.section,

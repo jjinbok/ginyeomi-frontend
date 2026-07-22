@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { softRiseStagger } from '@/constants/motion';
 import { metrics, space } from '@/constants/layout';
 import { colors, fonts, layout } from '@/constants/theme';
 import type { Anniversary } from '@/types';
@@ -6,56 +8,79 @@ import type { Anniversary } from '@/types';
 interface AnniversaryCardProps {
   anniversary: Anniversary;
   onPress: () => void;
+  enterIndex?: number;
 }
 
 function formatDate(month: number, day: number): string {
   return `${month}월 ${day}일`;
 }
 
-export function AnniversaryCard({ anniversary, onPress }: AnniversaryCardProps) {
+export function AnniversaryCard({
+  anniversary,
+  onPress,
+  enterIndex = 0,
+}: AnniversaryCardProps) {
   const isRecurring = anniversary.recurring;
   const isUpcoming = isRecurring && anniversary.daysUntilNext <= 30;
   const emojiSize = metrics.anniversaryEmoji;
 
+  let asideLabel: string;
+  let asideHint: string | null = null;
+  if (isUpcoming) {
+    if (anniversary.daysUntilNext === 0) {
+      asideLabel = '오늘';
+      asideHint = null;
+    } else {
+      asideLabel = String(anniversary.daysUntilNext);
+      asideHint = '일 전';
+    }
+  } else if (anniversary.memoryCount > 0) {
+    asideLabel = String(anniversary.memoryCount);
+    asideHint = '기록';
+  } else {
+    asideLabel = '·';
+    asideHint = '기록 없음';
+  }
+
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      onPress={onPress}
-    >
-      <View
-        style={[
-          styles.emojiCircle,
-          {
-            width: emojiSize,
-            height: emojiSize,
-            borderRadius: emojiSize / 2,
-          },
-        ]}
+    <Animated.View entering={softRiseStagger(enterIndex, 80)}>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+        onPress={onPress}
       >
-        <Text style={styles.emoji}>{anniversary.emoji}</Text>
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
-          {anniversary.name}
-        </Text>
-        <Text style={styles.date} numberOfLines={1}>
-          {formatDate(anniversary.month, anniversary.day)}
-          {!isRecurring ? ' · 올해만' : ' · 매년'}
-        </Text>
-      </View>
-      <View style={[styles.badge, isUpcoming ? styles.badgeAccent : styles.badgeMuted]}>
-        <Text
-          style={[styles.badgeText, isUpcoming ? styles.badgeTextAccent : styles.badgeTextMuted]}
-          numberOfLines={1}
+        <View
+          style={[
+            styles.emojiCircle,
+            {
+              width: emojiSize,
+              height: emojiSize,
+              borderRadius: emojiSize / 2,
+            },
+          ]}
         >
-          {isUpcoming
-            ? `${anniversary.daysUntilNext}일 전`
-            : anniversary.memoryCount > 0
-              ? `기록 ${anniversary.memoryCount}`
-              : '기록 없음'}
-        </Text>
-      </View>
-    </Pressable>
+          <Text style={styles.emoji}>{anniversary.emoji}</Text>
+        </View>
+        <View style={styles.content}>
+          <Text style={styles.name} numberOfLines={1}>
+            {anniversary.name}
+          </Text>
+          <Text style={styles.date} numberOfLines={1}>
+            {formatDate(anniversary.month, anniversary.day)}
+            {!isRecurring ? ' · 올해만' : ' · 매년'}
+          </Text>
+        </View>
+        <View style={styles.aside}>
+          <Text style={[styles.asideValue, isUpcoming && styles.asideValueAccent]}>
+            {asideLabel}
+          </Text>
+          {asideHint ? (
+            <Text style={[styles.asideHint, isUpcoming && styles.asideHintAccent]}>
+              {asideHint}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -100,27 +125,30 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: fonts.sans,
   },
-  badge: {
-    borderRadius: layout.chipRadius,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+  aside: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 44,
     flexShrink: 0,
   },
-  badgeAccent: {
-    backgroundColor: colors.accent,
+  asideValue: {
+    fontSize: 16,
+    fontFamily: fonts.serif,
+    color: colors.textSecondary,
+    lineHeight: 22,
   },
-  badgeMuted: {
-    backgroundColor: colors.tagBackground,
+  asideValueAccent: {
+    color: colors.accent,
+    fontSize: 18,
+    lineHeight: 24,
   },
-  badgeText: {
+  asideHint: {
     fontSize: 11,
     fontFamily: fonts.sans,
-    fontWeight: '500',
+    color: colors.textHint,
+    marginTop: 1,
   },
-  badgeTextAccent: {
-    color: colors.surface,
-  },
-  badgeTextMuted: {
+  asideHintAccent: {
     color: colors.textMuted,
   },
 });

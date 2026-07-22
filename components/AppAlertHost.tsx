@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { subscribeAppAlert, type AppAlertPayload } from '@/api/errors';
+import { AnimatedModal } from '@/components/AnimatedModal';
 import { colors, fonts, layout } from '@/constants/theme';
 
 /** Root에 한 번만 마운트 — showAppAlert / showApiErrorAlert 가 이 모달을 띄움 */
@@ -12,41 +13,25 @@ export function AppAlertHost() {
   const dismiss = () => setAlert(null);
 
   return (
-    <Modal
-      visible={alert != null}
-      transparent
-      animationType="fade"
-      onRequestClose={dismiss}
-    >
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>알려드려요</Text>
-          <Text style={[styles.title, !alert?.message && styles.titleSolo]}>{alert?.title}</Text>
-          {alert?.message ? <Text style={styles.message}>{alert.message}</Text> : null}
-          <Pressable
-            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-            onPress={dismiss}
-          >
-            <Text style={styles.buttonText}>확인</Text>
-          </Pressable>
-        </View>
+    <AnimatedModal visible={alert != null} onRequestClose={dismiss} variant="dialog">
+      <View style={styles.card}>
+        <Text style={styles.eyebrow}>알려드려요</Text>
+        <Text style={[styles.title, !alert?.message && styles.titleSolo]}>{alert?.title}</Text>
+        {alert?.message ? <Text style={styles.message}>{alert.message}</Text> : null}
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          onPress={dismiss}
+        >
+          <Text style={styles.buttonText}>확인</Text>
+        </Pressable>
       </View>
-    </Modal>
+    </AnimatedModal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(44, 36, 22, 0.42)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
   card: {
     width: '100%',
-    maxWidth: 340,
     backgroundColor: colors.background,
     borderRadius: layout.cardRadius,
     paddingTop: 22,

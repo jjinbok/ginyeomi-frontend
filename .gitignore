@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
@@ -44,10 +45,12 @@ Desktop.ini
 # local env (API URL, secrets)
 .env
 .env.*
+*.local
 !.env.example
 
-# typescript
+# typescript / lint
 *.tsbuildinfo
+.eslintcache
 
 # test / coverage
 coverage/
@@ -76,3 +79,6 @@ GoogleService-Info.plist
 .turbo/
 tmp/
 temp/
+
+# packaging artifacts
+*.tgz

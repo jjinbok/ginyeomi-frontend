@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showApiErrorAlert } from '@/api/errors';
@@ -16,6 +17,7 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { FAB } from '@/components/FAB';
 import { MemoryCard } from '@/components/MemoryCard';
 import { getScreenContentStyle } from '@/components/ScreenBody';
+import { softFade, softRiseStagger } from '@/constants/motion';
 import { metrics, space, typeScale, webContentFrame } from '@/constants/layout';
 import { colors, fonts, layout, typography } from '@/constants/theme';
 import { useFetchErrorAlert } from '@/hooks/useFetchErrorAlert';
@@ -174,7 +176,7 @@ export default function DetailScreen() {
         contentContainerStyle={getScreenContentStyle({ paddingTop: 4, paddingBottom: 120 })}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
+        <Animated.View entering={softFade(40)} style={styles.hero}>
           <View style={[styles.emojiCircle, { width: emojiSize + 28, height: emojiSize + 28 }]}>
             <Text style={[styles.emoji, { fontSize: emojiSize }]}>{displayEmoji}</Text>
           </View>
@@ -191,7 +193,7 @@ export default function DetailScreen() {
               <Text style={styles.metaBadgeText}>{memoryCountLabel}</Text>
             </View>
           ) : null}
-        </View>
+        </Animated.View>
 
         {isError ? (
           <ErrorBanner message="추억을 불러오지 못했어요. 네트워크와 서버 상태를 확인해주세요." />
@@ -216,7 +218,11 @@ export default function DetailScreen() {
             sortedMemories.map((memory, index) => {
               const isLast = index === sortedMemories.length - 1;
               return (
-                <View key={memory.id} style={styles.timelineRow}>
+                <Animated.View
+                  key={memory.id}
+                  entering={softRiseStagger(index, 110)}
+                  style={styles.timelineRow}
+                >
                   <View style={styles.timelineRail}>
                     <Text style={styles.timelineYear}>{memory.year}</Text>
                     <View style={styles.timelineDot} />
@@ -226,10 +232,11 @@ export default function DetailScreen() {
                     <MemoryCard
                       memory={memory}
                       showYear={false}
+                      enterIndex={false}
                       onPress={() => navigateToMemory(memory.id)}
                     />
                   </View>
-                </View>
+                </Animated.View>
               );
             })
           )}

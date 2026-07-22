@@ -1,4 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { softRise, softRiseStagger } from '@/constants/motion';
 import { ACTIVITY_TAGS } from '@/constants/tags';
 import { colors, fonts, layout, typography } from '@/constants/theme';
 import type { Memory, MemoryTag } from '@/types';
@@ -8,6 +10,12 @@ interface MemoryCardProps {
   onPress?: () => void;
   /** 타임라인 연도가 이미 보이는 경우 숨김 */
   showYear?: boolean;
+  /**
+   * 등장 애니메이션.
+   * - number: 순차 딜레이 인덱스
+   * - false: 부모에서 감쌀 때 중복 방지
+   */
+  enterIndex?: number | false;
 }
 
 function getTagLabel(tagId: MemoryTag | string): string {
@@ -15,7 +23,12 @@ function getTagLabel(tagId: MemoryTag | string): string {
   return tag ? tag.label : tagId;
 }
 
-export function MemoryCard({ memory, onPress, showYear = true }: MemoryCardProps) {
+export function MemoryCard({
+  memory,
+  onPress,
+  showYear = true,
+  enterIndex,
+}: MemoryCardProps) {
   const mainPhoto = memory.photoUrls?.[0];
   const photoCount = memory.photoUrls?.length ?? 0;
   const hasMemo = Boolean(memory.memo?.trim());
@@ -32,15 +45,20 @@ export function MemoryCard({ memory, onPress, showYear = true }: MemoryCardProps
     photoCount > 1 ? `사진 ${photoCount}` : null,
   ].filter(Boolean);
 
+  const entering =
+    enterIndex === false
+      ? undefined
+      : typeof enterIndex === 'number'
+        ? softRiseStagger(enterIndex)
+        : softRise();
+
   const body = (
     <>
       {mainPhoto ? (
         <View style={styles.photoWrap}>
           <Image source={{ uri: mainPhoto }} style={styles.photo} resizeMode="cover" />
           <View style={styles.photoShade} />
-          {showYear ? (
-            <Text style={styles.photoYear}>{memory.year}년</Text>
-          ) : null}
+          {showYear ? <Text style={styles.photoYear}>{memory.year}년</Text> : null}
         </View>
       ) : (
         <View style={styles.noPhotoHero}>
@@ -67,18 +85,20 @@ export function MemoryCard({ memory, onPress, showYear = true }: MemoryCardProps
     </>
   );
 
-  if (onPress) {
-    return (
-      <Pressable
-        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-        onPress={onPress}
-      >
-        {body}
-      </Pressable>
-    );
-  }
+  const card = onPress ? (
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      onPress={onPress}
+    >
+      {body}
+    </Pressable>
+  ) : (
+    <View style={styles.card}>{body}</View>
+  );
 
-  return <View style={styles.card}>{body}</View>;
+  if (!entering) return card;
+
+  return <Animated.View entering={entering}>{card}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

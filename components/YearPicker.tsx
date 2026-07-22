@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { AnimatedModal } from '@/components/AnimatedModal';
 import { colors, fonts, layout } from '@/constants/theme';
 
 interface YearPickerProps {
@@ -54,56 +55,58 @@ export function YearPicker({
         </Text>
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={styles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} />
-          <View style={styles.card}>
-            <View style={styles.header}>
-              <Pressable
-                disabled={!canGoPrev}
-                onPress={() => setPageStart((s) => s - YEARS_PER_PAGE)}
-                style={[styles.navButton, !canGoPrev && styles.navDisabled]}
-              >
-                <Text style={styles.navText}>‹</Text>
-              </Pressable>
-              <Text style={styles.headerTitle}>
-                {pageStart}–{Math.min(pageStart + YEARS_PER_PAGE - 1, maxYear)}
-              </Text>
-              <Pressable
-                disabled={!canGoNext}
-                onPress={() => setPageStart((s) => s + YEARS_PER_PAGE)}
-                style={[styles.navButton, !canGoNext && styles.navDisabled]}
-              >
-                <Text style={styles.navText}>›</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.grid}>
-              {years.map((year) => {
-                const selected = year === value;
-                return (
-                  <Pressable
-                    key={year}
-                    style={[styles.yearCell, selected && styles.yearSelected]}
-                    onPress={() => {
-                      onChange(year);
-                      setOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.yearText, selected && styles.yearTextSelected]}>
-                      {year}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable style={styles.closeButton} onPress={() => setOpen(false)}>
-              <Text style={styles.closeText}>닫기</Text>
+      <AnimatedModal
+        visible={open}
+        onRequestClose={() => setOpen(false)}
+        variant="dialog"
+        backdropColor="rgba(44, 36, 22, 0.35)"
+      >
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <Pressable
+              disabled={!canGoPrev}
+              onPress={() => setPageStart((s) => s - YEARS_PER_PAGE)}
+              style={[styles.navButton, !canGoPrev && styles.navDisabled]}
+            >
+              <Text style={styles.navText}>‹</Text>
+            </Pressable>
+            <Text style={styles.headerTitle}>
+              {pageStart}–{Math.min(pageStart + YEARS_PER_PAGE - 1, maxYear)}
+            </Text>
+            <Pressable
+              disabled={!canGoNext}
+              onPress={() => setPageStart((s) => s + YEARS_PER_PAGE)}
+              style={[styles.navButton, !canGoNext && styles.navDisabled]}
+            >
+              <Text style={styles.navText}>›</Text>
             </Pressable>
           </View>
+
+          <View style={styles.grid}>
+            {years.map((year) => {
+              const selected = year === value;
+              return (
+                <Pressable
+                  key={year}
+                  style={[styles.yearCell, selected && styles.yearSelected]}
+                  onPress={() => {
+                    onChange(year);
+                    setOpen(false);
+                  }}
+                >
+                  <Text style={[styles.yearText, selected && styles.yearTextSelected]}>
+                    {year}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable style={styles.closeButton} onPress={() => setOpen(false)}>
+            <Text style={styles.closeText}>닫기</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </AnimatedModal>
     </View>
   );
 }
@@ -147,16 +150,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 18,
   },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(44, 36, 22, 0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
   card: {
     width: '100%',
-    maxWidth: 320,
     backgroundColor: colors.background,
     borderRadius: layout.cardRadius,
     borderWidth: layout.borderWidth,
