@@ -67,7 +67,9 @@ coverage/
 
 # AI / local agent settings
 .claude/
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 
 # EAS / credentials
 google-services.json

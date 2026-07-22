@@ -1,0 +1,45 @@
+---
+description: Backend API reference (read-only). Use when aligning FE API clients, types, or request/response shapes with the Spring server.
+alwaysApply: true
+---
+
+# Backend API reference (read-only)
+
+This FE repo does **not** contain the server. The Spring Boot backend lives outside this workspace:
+
+**Absolute path:** `/Users/ljb4582/Desktop/Service/Ginyeomi/Ginyeomi_BE/ginyeomi`
+
+## Hard rules
+
+- **READ ONLY.** Never create, edit, delete, move, rename, or commit files under `Ginyeomi_BE/` (including via symlink or absolute path).
+- Use the backend only as a **contract reference** when changing this FE project’s `api/`, types, hooks, or screens to match real endpoints and DTOs.
+- Prefer reading Controllers + `dto/request` + `dto/response` first; then Service only if behavior is unclear.
+
+## Keep this rule in sync
+
+The backend changes over time. This file is a **snapshot**, not live truth.
+
+- When the user asks to re-read / sync / refresh the server (or otherwise requests an update), **re-read the backend sources**, then **update this rule** (and `AGENTS.md` if needed) with current controllers, path prefixes, and notable DTO/contract changes.
+- Do **not** invent or guess API changes—only write what you actually read from the backend.
+- Between sync requests, still read the backend when aligning FE APIs; do not rely on this snapshot alone if something looks stale.
+## Where to look
+
+- App root: `.../Ginyeomi_BE/ginyeomi`
+- Java sources: `.../src/main/java/com/girogi/ginyeomi/`
+- Controllers: `domain/*/controller/*Controller.java` and `global/storage/ImageUploadController.java`
+- DTOs: `domain/*/dto/request`, `domain/*/dto/response`
+- Config / resources: `src/main/resources`
+
+## Known API prefixes (`/api/v1`)
+
+| Area | Controller path prefix |
+| --- | --- |
+| Parents | `/api/v1/parents` |
+| Anniversaries | `/api/v1/anniversaries` |
+| Memories | `/api/v1/anniversaries/{anniversaryId}/memories` |
+| Preferences | `/api/v1/parents/{parentId}/preferences` |
+| Story questions | `/api/v1/story-questions` |
+| Story answers | `/api/v1/parents/{parentId}/story-answers` |
+| Images | `/api/v1/images` |
+
+FE base URL: `EXPO_PUBLIC_API_URL` (default `http://localhost:8080/api/v1`) in `.env.example` / `api/client.ts`.
